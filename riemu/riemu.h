@@ -1,22 +1,25 @@
 // Cleaner aliasing of types
 // -- unsigned
-typedef u8  uint8_t;
-typedef u16 uint16_t;
-typedef u32 uint32_t;
+typedef uint8_t  u8;
+typedef uint16_t u16;
+typedef uint32_t u32;
 // -- signed
-typedef s8  int8_t;
-typedef s16 int16_t;
-typedef s32 int32_t; // <-- Might not need this one...
+typedef int8_t  s8;
+typedef int16_t s16;
+typedef int32_t s32; // <-- Might not need this one...
 
 // Emu runtime macros
 #define PC_START   0
 #define INT_PERIOD 1500
 
+// Logging
+#define EMU_PRINTF(...) printf("[RiEMU]: " __VA_ARGS__)
+
 // RV32I instruction-format types
 typedef enum { R, I, S, B, U, J, Undefined } InstFormats;
 
 // RV32I opcode to instruction-format mapping
-const InstFormats OpcodeFormatMap [128] = {
+const InstFormats OpcodeToFormat [128] = {
 	/* 0b0000000 */ Undefined,
 	/* 0b0000001 */ Undefined,
 	/* 0b0000010 */ Undefined,

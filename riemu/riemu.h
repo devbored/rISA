@@ -15,10 +15,79 @@ typedef int32_t s32; // <-- Might not need this one...
 // Logging
 #define EMU_PRINTF(...) printf("[RiEMU]: " __VA_ARGS__)
 
-// RV32I instruction-format types
-typedef enum { R, I, S, B, U, J, Undefined } InstFormats;
+// --- RV32I Instructions ---
+typedef enum {
+           /* funct7 */  /* funct3 */ /* op */
+    SLLI = (0x0  << 10) | (0x1 << 7) | (0x13),
+    SRLI = (0x0  << 10) | (0x5 << 7) | (0x13),
+    SRAI = (0x20 << 10) | (0x5 << 7) | (0x13),
+    ADD  = (0x0  << 10) | (0x0 << 7) | (0x33),
+    SUB  = (0x20 << 10) | (0x0 << 7) | (0x33),
+    SLL  = (0x0  << 10) | (0x1 << 7) | (0x33),
+    SLT  = (0x0  << 10) | (0x2 << 7) | (0x33),
+    SLTU = (0x0  << 10) | (0x3 << 7) | (0x33),
+    XOR  = (0x0  << 10) | (0x4 << 7) | (0x33),
+    SRL  = (0x0  << 10) | (0x5 << 7) | (0x33),
+    SRA  = (0x20 << 10) | (0x5 << 7) | (0x33),
+    OR   = (0x0  << 10) | (0x6 << 7) | (0x33),
+    AND  = (0x0  << 10) | (0x7 << 7) | (0x33)
+} RtypeInstructions;
 
-// RV32I opcode to instruction-format mapping
+typedef enum {
+             /* funct3 */ /* op */
+    JALR   = (0x0 << 7) | (0x67),
+    LB     = (0x0 << 7) | (0x3),
+    LH     = (0x1 << 7) | (0x3),
+    LW     = (0x2 << 7) | (0x3),
+    LBU    = (0x4 << 7) | (0x3),
+    LHU    = (0x5 << 7) | (0x3),
+    ADDI   = (0x0 << 7) | (0x13),
+    SLTI   = (0x2 << 7) | (0x13),
+    SLTIU  = (0x3 << 7) | (0x13),
+    XORI   = (0x4 << 7) | (0x13),
+    ORI    = (0x6 << 7) | (0x13),
+    ANDI   = (0x7 << 7) | (0x13)
+
+    // TODO: Ignore these for now, add later...
+    //FENCE  = (0x0 << 7) | (0xf),
+    //ECALL  = (0x0 << 7) | (0x73),
+    //EBREAK = (0x0 << 7) | (0x73)
+} ItypeInstructions;
+
+typedef enum {
+         /* funct3 */ /* op */
+    SB = (0x0 << 7) | (0x23),
+    SH = (0x1 << 7) | (0x23),
+    SW = (0x2 << 7) | (0x23)
+} StypeInstructions;
+
+typedef enum {
+           /* funct3 */ /* op */
+    BEQ  = (0x0 << 7) | (0x63),
+    BNE  = (0x1 << 7) | (0x63),
+    BLT  = (0x4 << 7) | (0x63),
+    BGE  = (0x5 << 7) | (0x63),
+    BLTU = (0x6 << 7) | (0x63),
+    BGEU = (0x7 << 7) | (0x63)
+} BtypeInstructions;
+
+typedef enum {
+            /* op */
+    LUI   = (0x37),
+    AUIPC = (0x17)
+} UtypeInstructions;
+
+typedef enum {
+          /* op */
+    JAL = (0x6f)
+} JtypeInstructions;
+// --- RV32I Instructions ---
+
+// RV32I Register File
+u32 RegFile[32] = {0};
+
+// RV32I opcode to instruction-to-format mappings
+typedef enum { R, I, S, B, U, J, Undefined } InstFormats;
 const InstFormats OpcodeToFormat [128] = {
     /* 0b0000000 */ Undefined,
     /* 0b0000001 */ Undefined,

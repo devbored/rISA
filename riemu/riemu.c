@@ -4,12 +4,12 @@
 #include "riemu.h"
 
 int main(void) {
-    printf(
+    DEBUG_PRINT(
+        "Starting emulator.\n\n"
         "==============\n"
         "= RiEMU v0.1 =\n"
         "==============\n\n"
     );
-    EMU_PRINTF("Init emulator...\n");
 
     // Init the PC, emu counter, virualized IO, memory, etc.
     u32 DummyMem[8] = { // TODO: Replace this later for a virtualized memory that emulates MMIO
@@ -17,9 +17,9 @@ int main(void) {
         0x00a00113, /* addi x2, x0, 10  */
         0x00812703, /* lw x14, 8(x2)    */
         0x000111b7, /* lui x3, 17       */
-        0x000023ef, /* jal x7, 2        */
+        0x000003ef, /* jal x7, 2        */
         0x00e12423, /* sw x14, 8(x2)    */
-        0x00a98863, /* beq x19, x10, 16 */
+        0x00a99463, /* beq x19, x10, 16 */
         0x00000033, /* add x0, x0, x0   */
         0x000000ff  /* invalid op check */
     };
@@ -27,8 +27,8 @@ int main(void) {
     u32 counter = 0;
     // TODO: Add virtualized IO setup later...
     // TODO: Add virtualized memory setup later...
-    EMU_PRINTF("Init done.\n");
-    EMU_PRINTF("Starting emulation...\n\n");
+    DEBUG_PRINT("Init done.\n");
+    DEBUG_PRINT("Starting emulation...\n\n");
 
     // Run the emulator
     for (;;) {
@@ -43,9 +43,8 @@ int main(void) {
                 u8 rs1 =    (inst >> 15) & 0x1f;
                 u8 rs2 =    (inst >> 20) & 0x1f;
                 u8 funct7 = (inst >> 25) & 0x7f;
-                EMU_PRINTF("Current instruction (0x%08x) is R-type\n",
-                    inst);
-                EMU_PRINTF("--- Fields ---\n"
+                DEBUG_PRINT("Current instruction (0x%08x) is R-type\n", inst);
+                DEBUG_PRINT("--- Fields ---\n"
                     "         funct3: 0x%01x\n"
                     "         rd:     0x%02x\n"
                     "         rs1:    0x%02x\n"
@@ -118,9 +117,8 @@ int main(void) {
                 u8 rd =     (inst >> 7)  & 0x1f;
                 u8 rs1 =    (inst >> 15) & 0x1f;
                 u16 imm =   (inst >> 20) & 0xfff;
-                EMU_PRINTF("Current instruction (0x%08x) is I-type\n",
-                    inst);
-                EMU_PRINTF("--- Fields ---\n"
+                DEBUG_PRINT("Current instruction (0x%08x) is I-type\n", inst);
+                DEBUG_PRINT("--- Fields ---\n"
                     "         funct3:    0x%01x\n"
                     "         rd:        0x%02x\n"
                     "         rs1:       0x%02x\n"
@@ -136,39 +134,44 @@ int main(void) {
                         pc = ((RegFile[rs1] + (((s32)imm << 20) >> 20) & 0xfffe) & 0xfffe) - 1; // TODO: <same-as-above-TODO>
                         break;
                     }
-                    case LB:    {
-                        
+                    case LB:    { // Load byte (signed) - TODO: Blocked until memory can be made byte addressable
+                        break;
                     }
-                    case LH:    {
-
+                    case LH:    { // Load halfword (signed) - TODO: Blocked until memory can be made byte addressable
+                        break;
                     }
-                    case LW:    {
-
+                    case LW:    { // Load word
+                        RegFile[rd] = DummyMem[RegFile[rs1] + (((s32)imm << 20) >> 20)];
+                        break;
                     }
-                    case LBU:   {
-                        
+                    case LBU:   { // Load byte (unsigned) - TODO: Blocked until memory can be made byte addressable
+                        break;
                     }
-                    case LHU:   {
-
+                    case LHU:   { // Load halfword (unsigned) - TODO: Blocked until memory can be made byte addressable
+                        break;
                     }
                     case ADDI:  { // Add immediate
                         RegFile[rd] = RegFile[rs1] + (((s32)imm << 20) >> 20);
                         break;
                     }
-                    case SLTI:  {
-
+                    case SLTI:  { // Set if less than immediate (signed)
+                        RegFile[rd] = ((s32)RegFile[rs1] < (((s32)imm << 20) >> 20)) ? (1) : (0);
+                        break;
                     }
                     case SLTIU: {
-
+                        RegFile[rd] = (RegFile[rs1] < (u32)(((s32)imm << 20) >> 20)) ? (1) : (0);
+                        break;
                     }
-                    case XORI:  {
-
+                    case XORI:  { // Bitwise exclusive or immediate
+                        RegFile[rd] = RegFile[rs1] ^ (((s32)imm << 20) >> 20);
+                        break;
                     }
-                    case ORI:   {
-
+                    case ORI:   { // Bitwise or immediate
+                        RegFile[rd] = RegFile[rs1] | (((s32)imm << 20) >> 20);
+                        break;
                     }
-                    case ANDI:  {
-
+                    case ANDI:  { // Bitwise and immediate
+                        RegFile[rd] = RegFile[rs1] & (((s32)imm << 20) >> 20);
                     }
                 }
                 break;
@@ -180,9 +183,8 @@ int main(void) {
                 u8 rs1 =    (inst >> 15) & 0x1f;
                 u8 rs2 =    (inst >> 20) & 0x1f;
                 u16 imm2 =  (inst >> 25) & 0x7f;
-                EMU_PRINTF("Current instruction (0x%08x) is S-type\n",
-                    inst);
-                EMU_PRINTF("--- Fields ---\n"
+                DEBUG_PRINT("Current instruction (0x%08x) is S-type\n", inst);
+                DEBUG_PRINT("--- Fields ---\n"
                     "         funct3:    0x%01x\n"
                     "         imm[4:0]:  0x%02x\n"
                     "         rs1:       0x%02x\n"
@@ -194,9 +196,16 @@ int main(void) {
 
                 // Execute  - TODO: Finish this...
                 switch ((StypeInstructions)((funct3 << 7) | (opcode))) {
-                    case SB: {}
-                    case SH: {}
-                    case SW: {}
+                    case SB: { // Store byte - TODO: Blocked until memory can be made byte addressable
+                        break;
+                    }
+                    case SH: { // Store halfword - TODO: Blocked until memory can be made byte addressable
+                        break;
+                    }
+                    case SW: { // Store word
+                        DummyMem[RegFile[rs1] + (((s32)((imm2 << 5) | imm1) << 20) >> 20)] = RegFile[rs2];
+                        break;
+                    }
                 }
                 break;
             }
@@ -208,9 +217,8 @@ int main(void) {
                 u8 rs1 =    (inst >> 15) & 0x1f;
                 u8 rs2 =    (inst >> 20) & 0x1f;
                 u16 imm2 =  (inst >> 25) & 0x7f;
-                EMU_PRINTF("Current instruction (0x%08x) is B-type\n",
-                    inst);
-                EMU_PRINTF("--- Fields ---\n"
+                DEBUG_PRINT("Current instruction (0x%08x) is B-type\n", inst);
+                DEBUG_PRINT("--- Fields ---\n"
                     "         funct3:       0x%01x\n"
                     "         imm[4:1|11]:  0x%02x\n"
                     "         rs1:          0x%02x\n"
@@ -236,19 +244,23 @@ int main(void) {
                 // TODO: Pay attention to immediate bit ordering, fix this later...
                 u8 rd =   (inst >> 7)  & 0x1f;
                 u32 imm = (inst >> 12) & 0xfffff;
-                EMU_PRINTF("Current instruction (0x%08x) is U-type\n",
-                    inst);
-                EMU_PRINTF("--- Fields ---\n"
+                DEBUG_PRINT("Current instruction (0x%08x) is U-type\n", inst);
+                DEBUG_PRINT("--- Fields ---\n"
                     "         rd:     0x%02x\n"
                     "         imm:    0x%05x\n"
                     "         --------------\n",
                     (u32)rd, imm
                 );
 
-                // Execute  - TODO: Finish this...
+                // Execute
                 switch ((UtypeInstructions)(opcode)) {
-                    case LUI:   {}
-                    case AUIPC: {}
+                    case LUI:   {
+                        RegFile[rd] = imm << 12;
+                        break;
+                    }
+                    case AUIPC: {
+                        RegFile[rd] = pc + (imm << 12);
+                    }
                 }
                 break;
             }
@@ -257,9 +269,8 @@ int main(void) {
                 // TODO: Pay attention to immediate bit ordering, fix this later...
                 u8 rd =   (inst >> 7)  & 0x1f;
                 u16 imm = (inst >> 12) & 0xfffff;
-                EMU_PRINTF("Current instruction (0x%08x) is J-type\n",
-                    inst);
-                EMU_PRINTF("--- Fields ---\n"
+                DEBUG_PRINT("Current instruction (0x%08x) is J-type\n", inst);
+                DEBUG_PRINT("--- Fields ---\n"
                     "         rd:                    0x%02x\n"
                     "         imm[20|10:1|11|19:12]: 0x%05x\n"
                     "         --------------\n",
@@ -277,8 +288,7 @@ int main(void) {
                 break;
             }
             default: {
-                EMU_PRINTF("Uh-oh! (0x%08x) is an invalid instruction.\n",
-                    inst);
+                DEBUG_PRINT("Uh-oh! (0x%08x) is an invalid instruction.\n", inst);
                 abort();
             }
         }
@@ -287,7 +297,7 @@ int main(void) {
         pc = (pc+1) % 8; // TODO: PC needs to inc. by 4 once DummyMem is byte-addressable
         counter++;       // TODO: Fetch counter update values based on instruction via some lookup table
         RegFile[0] = 0;
-        EMU_PRINTF("<%d> cycle(s)\n", counter);
+        DEBUG_PRINT("<%d> cycle(s)\n", counter);
         
         // Temporary halt-on-each-clock-cycle functionality
         getc(stdin);

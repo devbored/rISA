@@ -1,2 +1,8 @@
-build/
-.vscode/
+# Ignore everything
+/*
+/*/
+
+# Whitelisted items
+!/riemu/
+!.gitignore
+!README.md

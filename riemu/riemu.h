@@ -12,8 +12,12 @@ typedef int32_t s32; // <-- Might not need this one...
 #define PC_START   0
 #define INT_PERIOD 1500
 
-// Logging
-#define EMU_PRINTF(...) printf("[RiEMU]: " __VA_ARGS__)
+// Debug macros
+#ifdef NDEBUG
+#define DEBUG_PRINT(...)
+#else
+#define DEBUG_PRINT(...) printf("[RiEMU]: " __VA_ARGS__)
+#endif
 
 // --- RV32I Instructions ---
 typedef enum {

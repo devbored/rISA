@@ -39,9 +39,9 @@ int main(void) {
             case R: {
                 // Decode
                 u8 funct3 = (inst >> 12) & 0x7;
-                u8 rd =     (inst >> 7)  & 0x1f;
-                u8 rs1 =    (inst >> 15) & 0x1f;
-                u8 rs2 =    (inst >> 20) & 0x1f;
+                u8 rd     = (inst >> 7)  & 0x1f;
+                u8 rs1    = (inst >> 15) & 0x1f;
+                u8 rs2    = (inst >> 20) & 0x1f;
                 u8 funct7 = (inst >> 25) & 0x7f;
                 DEBUG_PRINT("Current instruction (0x%08x) is R-type\n", inst);
                 DEBUG_PRINT("--- Fields ---\n"
@@ -113,25 +113,27 @@ int main(void) {
             }
             case I: {
                 // Decode
-                u8 funct3 = (inst >> 12) & 0x7;
-                u8 rd =     (inst >> 7)  & 0x1f;
-                u8 rs1 =    (inst >> 15) & 0x1f;
-                u16 imm =   (inst >> 20) & 0xfff;
+                u8 funct3    = (inst >> 12) & 0x7;
+                u8 rd        = (inst >> 7)  & 0x1f;
+                u8 rs1       = (inst >> 15) & 0x1f;
+                u16 imm      = (inst >> 20) & 0xfff;
+                s32 immFinal = (((s32)imm << 20) >> 20);
                 DEBUG_PRINT("Current instruction (0x%08x) is I-type\n", inst);
                 DEBUG_PRINT("--- Fields ---\n"
                     "         funct3:    0x%01x\n"
                     "         rd:        0x%02x\n"
                     "         rs1:       0x%02x\n"
                     "         imm[11:0]: 0x%03x\n"
+                    "         immFinal:  0x%08x\n"
                     "         --------------\n",
-                    (u32)funct3, (u32)rd, (u32)rs1, (u32)imm
+                    (u32)funct3, (u32)rd, (u32)rs1, (u32)imm, (u32)immFinal
                 );
 
                 // Execute - TODO: Finish this...
                 switch ((ItypeInstructions)((funct3 << 7) | (opcode))) {
                     case JALR:  { // Jump and link register
                         RegFile[rd] = ((pc+1) % 8); // TODO: PC needs to inc. by 4 once DummyMem is byte-addressable
-                        pc = ((RegFile[rs1] + (((s32)imm << 20) >> 20) & 0xfffe) & 0xfffe) - 1; // TODO: <same-as-above-TODO>
+                        pc = (((RegFile[rs1] + immFinal) & 0xfffe) & 0xfffe) - 1; // TODO: <same-as-above-TODO>
                         break;
                     }
                     case LB:    { // Load byte (signed) - TODO: Blocked until memory can be made byte addressable
@@ -141,7 +143,7 @@ int main(void) {
                         break;
                     }
                     case LW:    { // Load word
-                        RegFile[rd] = DummyMem[RegFile[rs1] + (((s32)imm << 20) >> 20)];
+                        RegFile[rd] = DummyMem[RegFile[rs1] + immFinal];
                         break;
                     }
                     case LBU:   { // Load byte (unsigned) - TODO: Blocked until memory can be made byte addressable
@@ -151,38 +153,39 @@ int main(void) {
                         break;
                     }
                     case ADDI:  { // Add immediate
-                        RegFile[rd] = RegFile[rs1] + (((s32)imm << 20) >> 20);
+                        RegFile[rd] = RegFile[rs1] + immFinal;
                         break;
                     }
                     case SLTI:  { // Set if less than immediate (signed)
-                        RegFile[rd] = ((s32)RegFile[rs1] < (((s32)imm << 20) >> 20)) ? (1) : (0);
+                        RegFile[rd] = ((s32)RegFile[rs1] < immFinal) ? (1) : (0);
                         break;
                     }
                     case SLTIU: {
-                        RegFile[rd] = (RegFile[rs1] < (u32)(((s32)imm << 20) >> 20)) ? (1) : (0);
+                        RegFile[rd] = (RegFile[rs1] < (u32)immFinal) ? (1) : (0);
                         break;
                     }
                     case XORI:  { // Bitwise exclusive or immediate
-                        RegFile[rd] = RegFile[rs1] ^ (((s32)imm << 20) >> 20);
+                        RegFile[rd] = RegFile[rs1] ^ immFinal;
                         break;
                     }
                     case ORI:   { // Bitwise or immediate
-                        RegFile[rd] = RegFile[rs1] | (((s32)imm << 20) >> 20);
+                        RegFile[rd] = RegFile[rs1] | immFinal;
                         break;
                     }
                     case ANDI:  { // Bitwise and immediate
-                        RegFile[rd] = RegFile[rs1] & (((s32)imm << 20) >> 20);
+                        RegFile[rd] = RegFile[rs1] & immFinal;
                     }
                 }
                 break;
             }
             case S: {
                 // Decode
-                u8 funct3 = (inst >> 12) & 0x7;
-                u8 imm1 =   (inst >> 7)  & 0x1f;
-                u8 rs1 =    (inst >> 15) & 0x1f;
-                u8 rs2 =    (inst >> 20) & 0x1f;
-                u16 imm2 =  (inst >> 25) & 0x7f;
+                u8 funct3    = (inst >> 12) & 0x7;
+                u8 imm1      = (inst >> 7)  & 0x1f;
+                u8 rs1       = (inst >> 15) & 0x1f;
+                u8 rs2       = (inst >> 20) & 0x1f;
+                u16 imm2     = (inst >> 25) & 0x7f;
+                s32 immFinal = (((s32)((imm2 << 5) | imm1) << 20) >> 20);
                 DEBUG_PRINT("Current instruction (0x%08x) is S-type\n", inst);
                 DEBUG_PRINT("--- Fields ---\n"
                     "         funct3:    0x%01x\n"
@@ -190,8 +193,9 @@ int main(void) {
                     "         rs1:       0x%02x\n"
                     "         rs2:       0x%02x\n"
                     "         imm[11:5]: 0x%02x\n"
+                    "         immFinal:  0x%08x\n"
                     "         --------------\n",
-                    (u32)funct3, (u32)imm1, (u32)rs1, (u32)rs2, (u32)imm2
+                    (u32)funct3, (u32)imm1, (u32)rs1, (u32)rs2, (u32)imm2, (u32)immFinal
                 );
 
                 // Execute  - TODO: Finish this...
@@ -203,7 +207,7 @@ int main(void) {
                         break;
                     }
                     case SW: { // Store word
-                        DummyMem[RegFile[rs1] + (((s32)((imm2 << 5) | imm1) << 20) >> 20)] = RegFile[rs2];
+                        DummyMem[RegFile[rs1] + immFinal] = RegFile[rs2];
                         break;
                     }
                 }
@@ -211,12 +215,13 @@ int main(void) {
             }
             case B: {
                 // Decode
-                // TODO: Pay attention to immediate bit ordering, fix this later...
-                u8 funct3 = (inst >> 12) & 0x7;
-                u8 imm1 =   (inst >> 7)  & 0x1f;
-                u8 rs1 =    (inst >> 15) & 0x1f;
-                u8 rs2 =    (inst >> 20) & 0x1f;
-                u16 imm2 =  (inst >> 25) & 0x7f;
+                u8 funct3    = (inst >> 12) & 0x7;
+                u8 imm1      = (inst >> 7)  & 0x1f;
+                u8 rs1       = (inst >> 15) & 0x1f;
+                u8 rs2       = (inst >> 20) & 0x1f;
+                u16 imm2     = (inst >> 25) & 0x7f;
+                u16 imm      = ((imm2 << 5) | imm1);
+                s32 immFinal = (((s32)((imm & 0x800) | ((imm & 0x1) << 10) | ((imm & 0x7e0) >> 1) | (imm & 0x1e) >> 1) << 12) >> 11);
                 DEBUG_PRINT("Current instruction (0x%08x) is B-type\n", inst);
                 DEBUG_PRINT("--- Fields ---\n"
                     "         funct3:       0x%01x\n"
@@ -224,8 +229,9 @@ int main(void) {
                     "         rs1:          0x%02x\n"
                     "         rs2:          0x%02x\n"
                     "         imm[12|10:5]: 0x%02x\n"
+                    "         immFinal:     0x%08x\n"
                     "         --------------\n",
-                    (u32)funct3, (u32)imm1, (u32)rs1, (u32)rs2, (u32)imm2
+                    (u32)funct3, (u32)imm1, (u32)rs1, (u32)rs2, (u32)imm2, (u32)immFinal
                 );
 
                 // Execute  - TODO: Finish this...
@@ -241,47 +247,49 @@ int main(void) {
             }
             case U: {
                 // Decode
-                // TODO: Pay attention to immediate bit ordering, fix this later...
-                u8 rd =   (inst >> 7)  & 0x1f;
-                u32 imm = (inst >> 12) & 0xfffff;
+                u8 rd        = (inst >> 7)  & 0x1f;
+                u32 imm      = (inst >> 12) & 0xfffff;
+                s32 immFinal = (s32)(imm << 12);
                 DEBUG_PRINT("Current instruction (0x%08x) is U-type\n", inst);
                 DEBUG_PRINT("--- Fields ---\n"
-                    "         rd:     0x%02x\n"
-                    "         imm:    0x%05x\n"
+                    "         rd:       0x%02x\n"
+                    "         imm:      0x%05x\n"
+                    "         immFinal: 0x%08x\n"
                     "         --------------\n",
-                    (u32)rd, imm
+                    (u32)rd, (u32)imm, (u32)immFinal
                 );
 
                 // Execute
                 switch ((UtypeInstructions)(opcode)) {
                     case LUI:   {
-                        RegFile[rd] = imm << 12;
+                        RegFile[rd] = immFinal;
                         break;
                     }
                     case AUIPC: {
-                        RegFile[rd] = pc + (imm << 12);
+                        RegFile[rd] = pc + immFinal;
                     }
                 }
                 break;
             }
             case J: {
                 // Decode
-                // TODO: Pay attention to immediate bit ordering, fix this later...
-                u8 rd =   (inst >> 7)  & 0x1f;
-                u16 imm = (inst >> 12) & 0xfffff;
+                u8 rd        = (inst >> 7)  & 0x1f;
+                u32 imm      = (inst >> 12) & 0xfffff;
+                s32 immFinal = (((s32)((imm & 0x40000) | ((imm & 0xff) << 11) | ((imm & 0x100) << 2) | (imm & 0x7fe00)) << 12) >> 11);
                 DEBUG_PRINT("Current instruction (0x%08x) is J-type\n", inst);
                 DEBUG_PRINT("--- Fields ---\n"
                     "         rd:                    0x%02x\n"
                     "         imm[20|10:1|11|19:12]: 0x%05x\n"
+                    "         immFinal:              0x%08x\n"
                     "         --------------\n",
-                    (u32)rd, imm
+                    (u32)rd, (u32)imm, (u32)immFinal
                 );
 
                 // Execute  - TODO: Finish this...
                 switch ((JtypeInstructions)(opcode)) {
                     case JAL: { // Jump and link
                         RegFile[rd] = ((pc+1) % 8); // TODO: PC needs to inc. by 4 once DummyMem is byte-addressable
-                        pc = (((((s32)imm << 20) >> 20) & 0xfffe) % 8) - 1; // TODO: <same-as-above-TODO>
+                        pc = (immFinal % 8) - 1; // TODO: <same-as-above-TODO>
                         break;
                     }
                 }

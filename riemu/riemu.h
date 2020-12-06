@@ -87,9 +87,6 @@ typedef enum {
 } JtypeInstructions;
 // --- RV32I Instructions ---
 
-// RV32I Register File
-u32 RegFile[32] = {0};
-
 // RV32I opcode to instruction-to-format mappings
 typedef enum { R, I, S, B, U, J, Undefined } InstFormats;
 const InstFormats OpcodeToFormat [128] = {

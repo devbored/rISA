@@ -6,7 +6,7 @@ typedef uint32_t u32;
 // -- signed
 typedef int8_t  s8;
 typedef int16_t s16;
-typedef int32_t s32; // <-- Might not need this one...
+typedef int32_t s32;
 
 // Emu runtime macros
 #define PC_START   0
@@ -18,6 +18,35 @@ typedef int32_t s32; // <-- Might not need this one...
 #else
 #define DEBUG_PRINT(...) printf("[RiEMU]: " __VA_ARGS__)
 #endif
+
+// Utility macros
+#define GET_BIT(var, pos) ((var & (1 << pos)) >> pos)
+#define GET_BITSET(var, pos, width) ((var & ((((1 << width) - 1) << pos))) >> pos)
+
+// Immediate field bits
+typedef struct {
+    u32 imm11_0  : 12;
+    u32 imm4_0   : 5;
+    u32 imm11_5  : 7;
+    u32 imm11    : 1;
+    u32 imm4_1   : 4;
+    u32 imm10_5  : 6;
+    u32 imm12    : 1;
+    u32 imm31_12 : 20;
+    u32 imm19_12 : 8;
+    u32 imm10_1  : 10;
+    u32 imm20    : 1;
+} ImmediateFields;
+
+// Instruction field bits
+typedef struct {
+    u32 opcode : 7;
+    u32 rd     : 5;
+    u32 rs1    : 5;
+    u32 rs2    : 5;
+    u32 funct3 : 3;
+    u32 funct7 : 7;
+} InstructionFields;
 
 // --- RV32I Instructions ---
 typedef enum {

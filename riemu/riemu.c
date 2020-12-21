@@ -4,7 +4,7 @@
 #include <limits.h>
 #include "riemu.h"
 
-int main(void) {
+int main(int argc, char** argv) {
     DEBUG_PRINT(
         "Starting emulator.\n\n"
         "==============\n"
@@ -20,26 +20,27 @@ int main(void) {
     u32 pc = PC_START;
     u32 cycleCounter = 0;
     u32 RegFile[32] = {0};
-    u32 DummyMem[16] = { // TODO: Replace this later for a virtualized memory that emulates MMIO
-        0x01c00113, /* addi x2, x0, 28  */
-        0x00812703, /* lw x14, 8(x2)    */
-        0x000111b7, /* lui x3, 17       */
-        0x008003ef, /* jal x7, 8        */
-        0x00e12423, /* sw x14, 8(x2)    */
-        0xfedff3ef, /* jal x7, -20      */
-        0x00000033, /* add x0, x0, x0   */
-        0x000000ff,  /* invalid op check */
-        // --- Lower half for dummy data memory ---
-        0x00000000,
-        0x00000011, /* data value 17 */
-        0x00000000,
-        0x00000000,
-        0x00000000,
-        0x00000000,
-        0x00000000,
-        0x00000000
-    };
+    u32 DummyMem[128] = {0}; // TODO: Replace this later for a virtualized memory that emulates MMIO
     const u32 memRange = sizeof(DummyMem);
+    if (argc == 1) {
+        printf(
+            "[RiEMU]: No program specified.\n"
+            "         Usage: riemu <program-binary>\n\n"
+            "         Exiting...\n"
+        );
+        return 0;
+    }
+    FILE *binFile = fopen(argv[1], "rb");
+    if (binFile == NULL) {
+        printf(
+            "[RiEMU]: Error. Could not open '%s'.\n"
+            "         Exiting...\n",
+            argv[1]
+        );
+        return 1;
+    }
+    fread(DummyMem, 4, 128, binFile);
+    fclose(binFile);
 
     // TODO: Add virtualized IO setup later...
     // TODO: Add virtualized memory setup later...
@@ -407,7 +408,7 @@ int main(void) {
             DEBUG_PRINT("Error. Program counter is out of range.\n");
             abort();
         }
-        cycleCounter++; // TODO: Fetch counter update values based on instruction via some lookup table
+        cycleCounter++;
         RegFile[0] = 0;
         DEBUG_PRINT("<%d> cycle(s)\n\n", cycleCounter);
         if (cycleCounter == INT32_MAX) {

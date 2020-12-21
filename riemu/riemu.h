@@ -22,6 +22,9 @@ typedef int32_t s32;
 // Utility macros
 #define GET_BIT(var, pos) ((var & (1 << pos)) >> pos)
 #define GET_BITSET(var, pos, width) ((var & ((((1 << width) - 1) << pos))) >> pos)
+#define ACCESS_MEM_W(offset) (*(u32*)((u8*)DummyMem + (offset)))
+#define ACCESS_MEM_H(offset) (*(u16*)((u8*)DummyMem + (offset)))
+#define ACCESS_MEM_B(offset) (*(u8*)((u8*)DummyMem + (offset)))
 
 // Immediate field bits
 typedef struct {

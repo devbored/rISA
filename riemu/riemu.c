@@ -39,7 +39,18 @@ int main(int argc, char** argv) {
         );
         return 1;
     }
-    fread(DummyMem, 4, 128, binFile);
+    u32 i = 0;
+    while(!feof(binFile) != 0) {
+        if (i >= (memRange / sizeof(u32))) {
+            printf(
+                "[RiEMU]: Error. Could not fit '%s' in emulator's virtual memory.\n"
+                "         Exiting...\n",
+                argv[1]
+            );
+            return 1;
+        }
+        fread(&DummyMem[i++], sizeof(u32), 1, binFile);
+    }
     fclose(binFile);
 
     // TODO: Add virtualized IO setup later...

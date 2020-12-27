@@ -15,7 +15,7 @@ int main(int argc, char** argv) {
     // Init the PC, emu counter, virualized IO, memory, etc.
     InstructionFields instBits;
     ImmediateFields immBits;
-    u32 inst;
+    u32 inst, instDecode;
     s32 immFinal, immPartial;
     u32 pc = PC_START;
     u32 cycleCounter = 0;
@@ -71,9 +71,10 @@ int main(int argc, char** argv) {
                 instBits.rs1    = GET_BITSET(inst, 15, 5);
                 instBits.rs2    = GET_BITSET(inst, 20, 5);
                 instBits.funct7 = GET_BITSET(inst, 25, 7);
+                instDecode = (instBits.funct7 << 10) | (instBits.funct3 << 7) | instBits.opcode;
 
                 // Execute
-                switch ((RtypeInstructions)((instBits.funct7 << 10) | (instBits.funct3 << 7) | instBits.opcode)) {
+                switch ((RtypeInstructions)instDecode) {
                     case SLLI: { // Shift left logical by immediate (i.e. rs2 is shamt)
                         RegFile[instBits.rd] = RegFile[instBits.rs1] << instBits.rs2;
                         DEBUG_PRINT("Current instruction: slli x%d, x%d, %d\n",
@@ -161,10 +162,14 @@ int main(int argc, char** argv) {
                 instBits.rd     = GET_BITSET(inst, 7, 5);
                 instBits.rs1    = GET_BITSET(inst, 15, 5);
                 immBits.imm11_0 = GET_BITSET(inst, 20, 12);
+                immBits.succ    = GET_BITSET(inst, 20, 4);
+                immBits.pred    = GET_BITSET(inst, 24, 4);
+                immBits.fm      = GET_BITSET(inst, 28, 4);
                 immFinal = (((s32)immBits.imm11_0 << 20) >> 20);
+                instDecode = (instBits.funct3 << 7) | instBits.opcode;
 
                 // Execute
-                switch ((ItypeInstructions)((instBits.funct3 << 7) | instBits.opcode)) {
+                switch ((ItypeInstructions)instDecode) {
                     case JALR:  { // Jump and link register
                         RegFile[instBits.rd] = pc + 4;
                         pc = ((RegFile[instBits.rs1] + immFinal) & 0xfffe) - 4;
@@ -240,6 +245,28 @@ int main(int argc, char** argv) {
                             instBits.rd, instBits.rs1, immBits.imm11_0);
                         break;
                     }
+                    case FENCE: { // FENCE - order device I/O and memory accesses
+                        // NOP for now...
+                        DEBUG_PRINT("Current instruction: fence %d, %d\n",
+                            immBits.pred, immBits.succ);
+                        break;
+                    }
+                    // Catch environment-type instructions
+                    default: {
+                        instDecode = (immBits.imm11_0 << 20) | (instBits.funct3 << 7) | instBits.opcode;
+                        switch ((ItypeInstructions)instDecode) {
+                            case ECALL: { // ECALL - request a syscall
+                                // NOP for now...
+                                DEBUG_PRINT("Current instruction: ecall\n");
+                                break;
+                            }
+                            case EBREAK: { // EBREAK - halt processor execution, transfer control to debugger
+                                // NOP for now...
+                                DEBUG_PRINT("Current instruction: ebreak\n");
+                                break;
+                            }
+                        }
+                    }
                 }
                 break;
             }
@@ -252,9 +279,10 @@ int main(int argc, char** argv) {
                 immBits.imm11_5 = GET_BITSET(inst, 25, 7);
                 immPartial = immBits.imm4_0 | (immBits.imm11_5 << 5);
                 immFinal = (((s32)immPartial << 20) >> 20);
+                instDecode = (instBits.funct3 << 7) | instBits.opcode;
 
                 // Execute
-                switch ((StypeInstructions)((instBits.funct3 << 7) | instBits.opcode)) {
+                switch ((StypeInstructions)instDecode) {
                     case SB: { // Store byte
                         ACCESS_MEM_B(RegFile[instBits.rs1] + immFinal) = (u8)RegFile[instBits.rs2];
                         DEBUG_PRINT("Current instruction: sb x%d, %d(x%d)\n",
@@ -287,9 +315,10 @@ int main(int argc, char** argv) {
                 immBits.imm12   = GET_BITSET(inst, 31, 1);
                 immPartial = immBits.imm11 | (immBits.imm4_1 << 1) | (immBits.imm10_5 << 5) | (immBits.imm12 << 11);
                 immFinal = (s32)(immPartial << 20) >> 19;
+                instDecode = (instBits.funct3 << 7) | instBits.opcode;
 
                 // Execute
-                switch ((BtypeInstructions)((instBits.funct3 << 7) | (instBits.opcode))) {
+                switch ((BtypeInstructions)instDecode) {
                     case BEQ:  { // Branch if Equal
                         if ((s32)RegFile[instBits.rs1] == (s32)RegFile[instBits.rs2]) {
                             pc += immFinal - 4;

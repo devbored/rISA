@@ -1,32 +1,25 @@
-// Cleaner aliasing of types
-// -- unsigned
 typedef uint8_t  u8;
 typedef uint16_t u16;
 typedef uint32_t u32;
-// -- signed
 typedef int8_t  s8;
 typedef int16_t s16;
 typedef int32_t s32;
 
-// Emu runtime macros
 #define PC_START   0
 #define INT_PERIOD 1500
 
-// Debug macros
 #ifdef NDEBUG
 #define DEBUG_PRINT(...)
 #else
 #define DEBUG_PRINT(...) printf("[RiEMU]: " __VA_ARGS__)
 #endif
 
-// Utility macros
 #define GET_BIT(var, pos) ((var & (1 << pos)) >> pos)
 #define GET_BITSET(var, pos, width) ((var & ((((1 << width) - 1) << pos))) >> pos)
 #define ACCESS_MEM_W(offset) (*(u32*)((u8*)DummyMem + (offset)))
 #define ACCESS_MEM_H(offset) (*(u16*)((u8*)DummyMem + (offset)))
 #define ACCESS_MEM_B(offset) (*(u8*)((u8*)DummyMem + (offset)))
 
-// Immediate field bits
 typedef struct {
     u32 imm11_0  : 12;
     u32 imm4_0   : 5;
@@ -39,9 +32,11 @@ typedef struct {
     u32 imm19_12 : 8;
     u32 imm10_1  : 10;
     u32 imm20    : 1;
+    u32 succ     : 4;
+    u32 pred     : 4;
+    u32 fm       : 4;
 } ImmediateFields;
 
-// Instruction field bits
 typedef struct {
     u32 opcode : 7;
     u32 rd     : 5;
@@ -82,12 +77,11 @@ typedef enum {
     SLTIU  = (0x3 << 7) | (0x13),
     XORI   = (0x4 << 7) | (0x13),
     ORI    = (0x6 << 7) | (0x13),
-    ANDI   = (0x7 << 7) | (0x13)
-
-    // TODO: Ignore these for now, add later...
-    //FENCE  = (0x0 << 7) | (0xf),
-    //ECALL  = (0x0 << 7) | (0x73),
-    //EBREAK = (0x0 << 7) | (0x73)
+    ANDI   = (0x7 << 7) | (0x13),
+    FENCE  = (0x0 << 7) | (0xf),
+    ECALL  = (0x0 << 7) | (0x73),
+              /* imm */   /* funct3 */  /* op */
+    EBREAK = (0x1 << 20) | (0x0 << 7) | (0x73)
 } ItypeInstructions;
 
 typedef enum {
@@ -119,7 +113,7 @@ typedef enum {
 } JtypeInstructions;
 // --- RV32I Instructions ---
 
-// RV32I opcode to instruction-to-format mappings
+// Opcode to instruction-format mappings
 typedef enum { R, I, S, B, U, J, Undefined } InstFormats;
 const InstFormats OpcodeToFormat [128] = {
     /* 0b0000000 */ Undefined,

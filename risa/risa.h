@@ -11,7 +11,7 @@ typedef int32_t s32;
 #ifdef NDEBUG
 #define DEBUG_PRINT(...)
 #else
-#define DEBUG_PRINT(...) printf("[RiEMU]: " __VA_ARGS__)
+#define DEBUG_PRINT(...) printf("[rISA]: " __VA_ARGS__)
 #endif
 
 #define GET_BIT(var, pos) ((var & (1 << pos)) >> pos)

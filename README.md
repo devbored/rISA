@@ -1,21 +1,25 @@
-# ricestick
-A simple yet full-featured computer system, using a custom RISC-V core, meant for implementation on a Lattice iCEstick FPGA development board. The goal for this project is to design the whole computing system stack from scratch.
-
-*The project is loosely-based off of [fromthetransistor](https://github.com/geohot/fromthetransistor)*.
+# rISA
+A simple RISC-V ISA Simulator.
 
 ## Project features
-- The RISC-V core design for both physical (**RiTL**) and software-emulated (**RiEMU**) implementations
-- **RiOS**, a very basic operating system for the ricestick
-- Various utilities such as an Assembler, C compiler, and a few others
+- Functional simulation of RV32I
+- Optional runtime loading of user-defined MMIO
+- Simple implementation (under 1000 LOC)
 
-## RiTL
-RTL design for the ricestick project written in synthesizable Verilog.
-
-## RiEMU
-An x86-based emulated implementaion of the ricestick project.
-
-## RiOS
-A minimal operating system for the ricestick project.
+## Dependencies
+- cmake >= v3.10
+- Some ANSI C/C++ compiler
+- riscv64-unknown-elf-gcc
+    - This is optional (only needed for building the included riscv examples)
 
 ## Build instructions
-*TODO: Implement this later…*
+    
+    $ cmake -Bbuild .
+    $ cmake --build ./build
+
+To build without examples
+    
+    $ cmake -Bbuild -DNO_EXAMPLES=1 .
+    $ cmake --build ./build
+
+

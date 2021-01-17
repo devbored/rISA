@@ -2,17 +2,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <limits.h>
-#include "riemu.h"
+#include "risa.h"
 
 int main(int argc, char** argv) {
-    DEBUG_PRINT(
-        "Starting emulator.\n\n"
-        "==============\n"
-        "= RiEMU v0.1 =\n"
-        "==============\n\n"
-    );
-
-    // Init the PC, emu counter, virualized IO, memory, etc.
     InstructionFields instBits;
     ImmediateFields immBits;
     u32 inst, instDecode;
@@ -24,8 +16,8 @@ int main(int argc, char** argv) {
     const u32 memRange = sizeof(DummyMem);
     if (argc == 1) {
         printf(
-            "[RiEMU]: No program specified.\n"
-            "         Usage: riemu <program-binary>\n\n"
+            "[rISA]: No program specified.\n"
+            "         Usage: rISA <program-binary>\n\n"
             "         Exiting...\n"
         );
         return 0;
@@ -33,7 +25,7 @@ int main(int argc, char** argv) {
     FILE *binFile = fopen(argv[1], "rb");
     if (binFile == NULL) {
         printf(
-            "[RiEMU]: Error. Could not open '%s'.\n"
+            "[rISA]: Error. Could not open '%s'.\n"
             "         Exiting...\n",
             argv[1]
         );
@@ -43,7 +35,7 @@ int main(int argc, char** argv) {
     while(!feof(binFile) != 0) {
         if (i >= (memRange / sizeof(u32))) {
             printf(
-                "[RiEMU]: Error. Could not fit '%s' in emulator's virtual memory.\n"
+                "[rISA]: Error. Could not fit '%s' in emulator's virtual memory.\n"
                 "         Exiting...\n",
                 argv[1]
             );
@@ -55,8 +47,7 @@ int main(int argc, char** argv) {
 
     // TODO: Add virtualized IO setup later...
     // TODO: Add virtualized memory setup later...
-    DEBUG_PRINT("Init done.\n");
-    DEBUG_PRINT("Running...\n\n");
+    DEBUG_PRINT("Running simulator...\n\n");
 
     // Run the emulator
     for (;;) {

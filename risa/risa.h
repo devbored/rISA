@@ -13,9 +13,9 @@ typedef int32_t s32;
 
 #define GET_BIT(var, pos) ((var & (1 << pos)) >> pos)
 #define GET_BITSET(var, pos, width) ((var & ((((1 << width) - 1) << pos))) >> pos)
-#define ACCESS_MEM_W(offset) (*(u32*)((u8*)VIO + (offset)))
-#define ACCESS_MEM_H(offset) (*(u16*)((u8*)VIO + (offset)))
-#define ACCESS_MEM_B(offset) (*(u8*)((u8*)VIO + (offset)))
+#define ACCESS_MEM_W(offset) (*(u32*)((u8*)virtMem + (offset)))
+#define ACCESS_MEM_H(offset) (*(u16*)((u8*)virtMem + (offset)))
+#define ACCESS_MEM_B(offset) (*(u8*)((u8*)virtMem + (offset)))
 
 typedef struct {
     u32 imm11_0  : 12;
@@ -43,7 +43,7 @@ typedef struct {
     u32 funct7 : 7;
 } InstructionFields;
 
-typedef struct {
+typedef struct rv32iHart{
     u32                 pc;
     u32                 regFile[32];
     u32                 IF;
@@ -53,10 +53,14 @@ typedef struct {
     s32                 immPartial;
     ImmediateFields     immFields;
     InstructionFields   instFields;
+    void (*pfnMmioHandler)(u32 addr, u32 *virtMem, struct rv32iHart cpu);
+    void (*pfnIntHandler)(u32 *virtMem, struct rv32iHart cpu);
+    void (*pfnEnvHandler)(u32 *virtMem, struct rv32iHart cpu);
 } rv32iHart;
 
-void risaMmioHandler(u32 addr, u32 *mem);
-void risaIntHandler(u32 addr, u32 *mem);
+void stubMmioHandler(u32 addr, u32 *virtMem, rv32iHart cpu);
+void stubIntHandler(u32 *vertMem, rv32iHart cpu);
+void stubEnvHandler(u32 *vertMem, rv32iHart cpu);
 
 // --- RV32I Instructions ---
 typedef enum {

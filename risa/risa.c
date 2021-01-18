@@ -4,10 +4,14 @@
 #include <limits.h>
 #include "risa.h"
 
+inline void stubMmioHandler(u32 addr, u32 *virtMem, rv32iHart cpu)  { return; }
+inline void stubIntHandler(u32 *vertMem, rv32iHart cpu)             { return; }
+inline void stubEnvHandler(u32 *vertMem, rv32iHart cpu)             { return; }
+
 int main(int argc, char** argv) {
     rv32iHart cpu = {0};
-    u32 VIO[1024] = {0};    // TODO: Add option to change this value
-    const u32 memRange = sizeof(VIO);
+    u32 virtMem[1024] = {0};    // TODO: Add option to change this value
+    const u32 memRange = sizeof(virtMem);
     if (argc == 1) {
         printf("[rISA]: No program specified.\n\tUsage: rISA <program-binary>\n\n\tExiting...\n");
         return 0;
@@ -23,9 +27,19 @@ int main(int argc, char** argv) {
             fclose(binFile);
             return 1;
         }
-        fread(VIO+i, sizeof(u32), 1, binFile);
+        fread(virtMem+i, sizeof(u32), 1, binFile);
     }
     fclose(binFile);
+    // Check for user-overloaded handler functions
+    // TODO: Perform cross-platform runtime library loading here...
+    if (0) {
+        // TODO: If above library loading works, overload pfn's
+    }
+    else {
+        cpu.pfnMmioHandler = stubMmioHandler;
+        cpu.pfnIntHandler  = stubIntHandler;
+        cpu.pfnEnvHandler  = stubEnvHandler; 
+    }
     DEBUG_PRINT("Running simulator...\n\n");
     for (;;) {
         // Fetch
@@ -238,16 +252,15 @@ int main(int argc, char** argv) {
                         cpu.ID = (cpu.immFields.imm11_0 << 20) | (cpu.instFields.funct3 << 7) | cpu.instFields.opcode;
                         switch ((ItypeInstructions)cpu.ID) {
                             case ECALL: { // ECALL - request a syscall
-                                // NOP for now...
                                 DEBUG_PRINT("Current instruction: ecall\n");
                                 break;
                             }
                             case EBREAK: { // EBREAK - halt processor execution, transfer control to debugger
-                                // NOP for now...
                                 DEBUG_PRINT("Current instruction: ebreak\n");
                                 break;
                             }
                         }
+                        //cpu.pfnEnvHandler(virtMem, cpu);
                     }
                 }
                 break;
@@ -286,8 +299,7 @@ int main(int argc, char** argv) {
                         break;
                     }
                 }
-                
-
+                //cpu.pfnMmioHandler(cpu.regFile[cpu.instFields.rs1] + cpu.immFinal, virtMem, cpu);
                 break;
             }
             case B: {
@@ -405,13 +417,14 @@ int main(int argc, char** argv) {
                 abort();
             }
         }
-        // Update cpu.pc and counter, reset register x0 back to zero
+        // Update cpu.pc and counter, check for interrupts, and reset register x0 back to zero
         cpu.pc += 4;
         if (cpu.pc > memRange) {
             DEBUG_PRINT("Error. Program counter is out of range.\n");
             abort();
         }
         cpu.cycleCounter++;
+        //cpu.pfnIntHandler(virtMem, cpu);
         cpu.regFile[0] = 0;
         DEBUG_PRINT("<%d> cycle(s)\n\n", cpu.cycleCounter);
         if (cpu.cycleCounter == INT32_MAX) {

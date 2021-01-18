@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.10)
 
-project(ricestick)
+project(risa)
 add_custom_target(RISA ALL
     COMMAND cmake ${CMAKE_SOURCE_DIR}/risa -Brisa -G ${CMAKE_GENERATOR} -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
     COMMAND cmake --build risa

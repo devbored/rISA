@@ -4,6 +4,10 @@ project(risa)
 add_executable(risa 
     risa.c
 )
+target_link_libraries(
+    risa
+    ${CMAKE_DL_LIBS}
+)
 set_property(
     TARGET risa
     PROPERTY C_STANDARD 99

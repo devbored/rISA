@@ -4,6 +4,8 @@
 #include <limits.h>
 #ifdef _WIN32
 #include <windows.h>
+#else
+#include <dlfcn.h>
 #endif
 #include "risa.h"
 
@@ -19,7 +21,8 @@ int main(int argc, char** argv) {
         printf("[rISA]: No program specified.\n\tUsage: rISA <program-binary>\n\n\tExiting...\n");
         return 0;
     }
-    FILE *binFile = fopen(argv[1], "rb");
+    FILE* binFile;
+    OPEN_FILE(binFile, argv[1], "rb");
     if (binFile == NULL) {
         printf("[rISA]: Error. Could not open '%s'.\n\tExiting...\n", argv[1]);
         return 1;
@@ -38,16 +41,17 @@ int main(int argc, char** argv) {
     cpu.pfnIntHandler  = defaultStubIntHandler;
     cpu.pfnEnvHandler  = defaultStubEnvHandler; 
     if (argc > 2) {
+        printf("%s\n", argv[2]);
         LIB_HANDLE libHandle = LOAD_LIB(argv[2]);
         if (libHandle == NULL) {
             printf("[rISA]: Error. Could not load dynamic library '%s'.\n\tExiting...\n", argv[2]);
             return 1;
         }
-        PROC_HANDLE mmioHandle = LOAD_SYM(libHandle, "risaMmioHandler");
+        pfnMmioHandler mmioHandle = (pfnMmioHandler)LOAD_SYM(libHandle, "risaMmioHandler");
         if (mmioHandle != NULL) { cpu.pfnMmioHandler = mmioHandle; }
-        PROC_HANDLE intHandle = LOAD_SYM(libHandle,  "risaIntHandler");
+        pfnIntHandler intHandle = (pfnIntHandler)LOAD_SYM(libHandle, "risaIntHandler");
         if (mmioHandle != NULL) { cpu.pfnIntHandler = intHandle; }
-        PROC_HANDLE envHandle = LOAD_SYM(libHandle,  "risaEnvHandler");
+        pfnEnvHandler envHandle = (pfnEnvHandler)LOAD_SYM(libHandle, "risaEnvHandler");
         if (mmioHandle != NULL) { cpu.pfnEnvHandler = envHandle; }
     }
     DEBUG_PRINT("Running simulator...\n\n");

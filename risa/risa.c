@@ -2,11 +2,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <limits.h>
+#ifdef _WIN32
+#include <windows.h>
+#endif
 #include "risa.h"
 
-inline void stubMmioHandler(u32 addr, u32 *virtMem, rv32iHart cpu)  { return; }
-inline void stubIntHandler(u32 *vertMem, rv32iHart cpu)             { return; }
-inline void stubEnvHandler(u32 *vertMem, rv32iHart cpu)             { return; }
+void defaultStubMmioHandler(u32 addr, u32 *virtMem, rv32iHart cpu)  { return; }
+void defaultStubIntHandler(u32 *vertMem, rv32iHart cpu)             { return; }
+void defaultStubEnvHandler(u32 *vertMem, rv32iHart cpu)             { return; }
 
 int main(int argc, char** argv) {
     rv32iHart cpu = {0};
@@ -31,14 +34,21 @@ int main(int argc, char** argv) {
     }
     fclose(binFile);
     // Check for user-overloaded handler functions
-    // TODO: Perform cross-platform runtime library loading here...
-    if (0) {
-        // TODO: If above library loading works, overload pfn's
-    }
-    else {
-        cpu.pfnMmioHandler = stubMmioHandler;
-        cpu.pfnIntHandler  = stubIntHandler;
-        cpu.pfnEnvHandler  = stubEnvHandler; 
+    cpu.pfnMmioHandler = defaultStubMmioHandler;
+    cpu.pfnIntHandler  = defaultStubIntHandler;
+    cpu.pfnEnvHandler  = defaultStubEnvHandler; 
+    if (argc > 2) {
+        LIB_HANDLE libHandle = LOAD_LIB(argv[2]);
+        if (libHandle == NULL) {
+            printf("[rISA]: Error. Could not load dynamic library '%s'.\n\tExiting...\n", argv[2]);
+            return 1;
+        }
+        PROC_HANDLE mmioHandle = LOAD_SYM(libHandle, "risaMmioHandler");
+        if (mmioHandle != NULL) { cpu.pfnMmioHandler = mmioHandle; }
+        PROC_HANDLE intHandle = LOAD_SYM(libHandle,  "risaIntHandler");
+        if (mmioHandle != NULL) { cpu.pfnIntHandler = intHandle; }
+        PROC_HANDLE envHandle = LOAD_SYM(libHandle,  "risaEnvHandler");
+        if (mmioHandle != NULL) { cpu.pfnEnvHandler = envHandle; }
     }
     DEBUG_PRINT("Running simulator...\n\n");
     for (;;) {
@@ -260,7 +270,7 @@ int main(int argc, char** argv) {
                                 break;
                             }
                         }
-                        //cpu.pfnEnvHandler(virtMem, cpu);
+                        cpu.pfnEnvHandler(virtMem, cpu);
                     }
                 }
                 break;
@@ -299,7 +309,7 @@ int main(int argc, char** argv) {
                         break;
                     }
                 }
-                //cpu.pfnMmioHandler(cpu.regFile[cpu.instFields.rs1] + cpu.immFinal, virtMem, cpu);
+                cpu.pfnMmioHandler(cpu.regFile[cpu.instFields.rs1] + cpu.immFinal, virtMem, cpu);
                 break;
             }
             case B: {
@@ -424,7 +434,9 @@ int main(int argc, char** argv) {
             abort();
         }
         cpu.cycleCounter++;
-        //cpu.pfnIntHandler(virtMem, cpu);
+        if ((cpu.cycleCounter % INT_PERIOD) == 0) { 
+            cpu.pfnIntHandler(virtMem, cpu); 
+        }
         cpu.regFile[0] = 0;
         DEBUG_PRINT("<%d> cycle(s)\n\n", cpu.cycleCounter);
         if (cpu.cycleCounter == INT32_MAX) {

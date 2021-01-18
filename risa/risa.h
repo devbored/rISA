@@ -11,6 +11,20 @@ typedef int32_t s32;
 #define DEBUG_PRINT(...) printf("[rISA]: " __VA_ARGS__)
 #endif
 
+#ifdef _WIN32
+typedef int (__cdecl *MYPROC)(LPWSTR);
+#define PROC_HANDLE                 MYPROC
+#define LOAD_LIB(libpath)           LoadLibrary(libpath)
+#define LOAD_SYM(handle, fname)     (MYPROC) GetProcAddress(handle, fname)
+#define LIB_HANDLE                  HINSTANCE
+#else
+#define LOAD_LIB(libpath)           dlopen(libpath, RTLD_LAZY)
+#define LOAD_SYM(handle, fname)     dlsym(handle, fname)
+#define LIB_HANDLE                  void*
+#define PROC_HANDLE                 void*
+#endif
+
+#define INT_PERIOD 1500
 #define GET_BIT(var, pos) ((var & (1 << pos)) >> pos)
 #define GET_BITSET(var, pos, width) ((var & ((((1 << width) - 1) << pos))) >> pos)
 #define ACCESS_MEM_W(offset) (*(u32*)((u8*)virtMem + (offset)))
@@ -57,10 +71,6 @@ typedef struct rv32iHart{
     void (*pfnIntHandler)(u32 *virtMem, struct rv32iHart cpu);
     void (*pfnEnvHandler)(u32 *virtMem, struct rv32iHart cpu);
 } rv32iHart;
-
-void stubMmioHandler(u32 addr, u32 *virtMem, rv32iHart cpu);
-void stubIntHandler(u32 *vertMem, rv32iHart cpu);
-void stubEnvHandler(u32 *vertMem, rv32iHart cpu);
 
 // --- RV32I Instructions ---
 typedef enum {
@@ -131,7 +141,7 @@ typedef enum {
 
 // Opcode to instruction-format mappings
 typedef enum { R, I, S, B, U, J, Undefined } InstFormats;
-const InstFormats OpcodeToFormat [128] = {
+const InstFormats OpcodeToFormat [128] = { // TODO: Breaks One-Definition-Rule, find better place for this
     /* 0b0000000 */ Undefined,
     /* 0b0000001 */ Undefined,
     /* 0b0000010 */ Undefined,

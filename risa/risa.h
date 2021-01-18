@@ -5,9 +5,6 @@ typedef int8_t  s8;
 typedef int16_t s16;
 typedef int32_t s32;
 
-#define PC_START   0
-#define INT_PERIOD 1500
-
 #ifdef NDEBUG
 #define DEBUG_PRINT(...)
 #else
@@ -16,9 +13,9 @@ typedef int32_t s32;
 
 #define GET_BIT(var, pos) ((var & (1 << pos)) >> pos)
 #define GET_BITSET(var, pos, width) ((var & ((((1 << width) - 1) << pos))) >> pos)
-#define ACCESS_MEM_W(offset) (*(u32*)((u8*)DummyMem + (offset)))
-#define ACCESS_MEM_H(offset) (*(u16*)((u8*)DummyMem + (offset)))
-#define ACCESS_MEM_B(offset) (*(u8*)((u8*)DummyMem + (offset)))
+#define ACCESS_MEM_W(offset) (*(u32*)((u8*)VIO + (offset)))
+#define ACCESS_MEM_H(offset) (*(u16*)((u8*)VIO + (offset)))
+#define ACCESS_MEM_B(offset) (*(u8*)((u8*)VIO + (offset)))
 
 typedef struct {
     u32 imm11_0  : 12;
@@ -46,9 +43,24 @@ typedef struct {
     u32 funct7 : 7;
 } InstructionFields;
 
+typedef struct {
+    u32                 pc;
+    u32                 regFile[32];
+    u32                 IF;
+    u32                 ID;
+    u32                 cycleCounter;
+    s32                 immFinal;
+    s32                 immPartial;
+    ImmediateFields     immFields;
+    InstructionFields   instFields;
+} rv32iHart;
+
+void risaMmioHandler(u32 addr, u32 *mem);
+void risaIntHandler(u32 addr, u32 *mem);
+
 // --- RV32I Instructions ---
 typedef enum {
-           /* funct7 */  /* funct3 */ /* op */
+    //     funct7         funct3       op
     SLLI = (0x0  << 10) | (0x1 << 7) | (0x13),
     SRLI = (0x0  << 10) | (0x5 << 7) | (0x13),
     SRAI = (0x20 << 10) | (0x5 << 7) | (0x13),
@@ -65,7 +77,7 @@ typedef enum {
 } RtypeInstructions;
 
 typedef enum {
-             /* funct3 */ /* op */
+    //       funct3       op
     JALR   = (0x0 << 7) | (0x67),
     LB     = (0x0 << 7) | (0x3),
     LH     = (0x1 << 7) | (0x3),
@@ -80,19 +92,19 @@ typedef enum {
     ANDI   = (0x7 << 7) | (0x13),
     FENCE  = (0x0 << 7) | (0xf),
     ECALL  = (0x0 << 7) | (0x73),
-              /* imm */   /* funct3 */  /* op */
+    //       imm           funct3       op
     EBREAK = (0x1 << 20) | (0x0 << 7) | (0x73)
 } ItypeInstructions;
 
 typedef enum {
-         /* funct3 */ /* op */
+    //   funct3       op
     SB = (0x0 << 7) | (0x23),
     SH = (0x1 << 7) | (0x23),
     SW = (0x2 << 7) | (0x23)
 } StypeInstructions;
 
 typedef enum {
-           /* funct3 */ /* op */
+    //     funct3       op
     BEQ  = (0x0 << 7) | (0x63),
     BNE  = (0x1 << 7) | (0x63),
     BLT  = (0x4 << 7) | (0x63),
@@ -102,13 +114,13 @@ typedef enum {
 } BtypeInstructions;
 
 typedef enum {
-            /* op */
+    //      op
     LUI   = (0x37),
     AUIPC = (0x17)
 } UtypeInstructions;
 
 typedef enum {
-          /* op */
+    //    op
     JAL = (0x6f)
 } JtypeInstructions;
 // --- RV32I Instructions ---

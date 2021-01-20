@@ -74,7 +74,7 @@ typedef struct {
 
 typedef struct rv32iHart{
     u32                 pc;
-    u32                 regFile[32];
+    u32                 regFile[32]; // TODO: Make this a ptr and malloc-at-setup to cut down on struct size?
     u32                 IF;
     u32                 ID;
     s32                 immFinal;

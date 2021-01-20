@@ -16,6 +16,11 @@ static void stubMmioHandler(rv32iHart cpu)  { return; }
 static void stubIntHandler(rv32iHart cpu)   { return; }
 static void stubEnvHandler(rv32iHart cpu)   { return; }
 
+static volatile int g_sigIntDet = 0;
+static void sigintHandler(int signo) {
+    g_sigIntDet = 1;
+}
+
 static void printHelp(void) {
     printf(
         "[rISA]:    Usage: risa <program_binary> [OPTIONS]\n"
@@ -152,7 +157,7 @@ static void setupSimulator(int argc, char** argv, rv32iHart *cpu) {
     }
     for (int i=0; !feof(binFile) != 0; ++i) {
         if (i >= (cpu->virtMemRange / sizeof(u32))) {
-            printf("[rISA]: Error. Could not fit '%s' in emulator's virtual memory.\n\tExiting...\n", argv[1]);
+            printf("[rISA]: Error. Could not fit '%s' in simulator's virtual memory.\n\tExiting...\n", argv[1]);
             fclose(binFile);
             exit(1);
         }
@@ -164,8 +169,9 @@ static void setupSimulator(int argc, char** argv, rv32iHart *cpu) {
 int main(int argc, char** argv) {
     rv32iHart cpu = {0};
     setupSimulator(argc, argv, &cpu);
-    DEBUG_PRINT(cpu, "Running simulator...\n\n");
+    printf("[rISA]: Running simulator...\n\n");
     cpu.startTime = clock();
+    signal(SIGINT, sigintHandler);
     for (;;) {
         // Fetch
         cpu.IF = ACCESS_MEM_W(cpu.virtMem, cpu.pc);
@@ -556,11 +562,11 @@ int main(int argc, char** argv) {
         }
         cpu.regFile[0] = 0;
         DEBUG_PRINT(cpu, "<%d> cycle(s)\n\n", cpu.cycleCounter);
-        if (cpu.cycleCounter == cpu.timeoutVal) {
+        if (cpu.cycleCounter == cpu.timeoutVal || g_sigIntDet) {
             cpu.endTime = clock();
             cpu.timeDelta = ((double)(cpu.endTime - cpu.startTime)) / CLOCKS_PER_SEC;
             printf(
-                "[rISA]: Simulator timeout reached, exiting.\n"
+                "[rISA]: Simulator stopping.\n"
                 "        Simulation time elapsed: (%f seconds).\n",
                 cpu.timeDelta
             );

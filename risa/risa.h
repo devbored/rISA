@@ -1,15 +1,10 @@
 typedef uint8_t  u8;
 typedef uint16_t u16;
 typedef uint32_t u32;
+typedef uint64_t u64;
 typedef int8_t  s8;
 typedef int16_t s16;
 typedef int32_t s32;
-
-#ifdef NDEBUG
-#define DEBUG_PRINT(...)
-#else
-#define DEBUG_PRINT(...) printf("[rISA]: " __VA_ARGS__)
-#endif
 
 #ifdef _WIN32
 #define LOAD_LIB(libpath)               LoadLibrary(libpath)
@@ -31,12 +26,17 @@ typedef int32_t s32;
 #define DLLEXPORT                       
 #endif
 
-#define INT_PERIOD 500
+#define DEFAULT_VIRT_MEM_SIZE 16384 // 16KB
+#define DEFAULT_INT_PERIOD 500
 #define GET_BIT(var, pos) ((var & (1 << pos)) >> pos)
 #define GET_BITSET(var, pos, width) ((var & ((((1 << width) - 1) << pos))) >> pos)
-#define ACCESS_MEM_W(offset) (*(u32*)((u8*)virtMem + (offset)))
-#define ACCESS_MEM_H(offset) (*(u16*)((u8*)virtMem + (offset)))
-#define ACCESS_MEM_B(offset) (*(u8*)((u8*)virtMem + (offset)))
+#define ACCESS_MEM_W(virtMem, offset) (*(u32*)((u8*)virtMem + (offset)))
+#define ACCESS_MEM_H(virtMem, offset) (*(u16*)((u8*)virtMem + (offset)))
+#define ACCESS_MEM_B(virtMem, offset) (*(u8*)((u8*)virtMem + (offset)))
+#define DEBUG_PRINT(cpu, ...)   do {                                                                \
+                                    if (cpu.opts.o_debugEnable) { printf("[rISA]: " __VA_ARGS__); } \
+                                } while (0)
+
 
 typedef struct {
     u32 imm11_0  : 12;
@@ -64,24 +64,53 @@ typedef struct {
     u32 funct7 : 7;
 } InstructionFields;
 
+typedef struct {
+    u32 o_debugEnable       : 1;
+    u32 o_virtMemSize       : 1;
+    u32 o_definedHandles    : 1;
+    u32 o_timeout           : 1;
+    u32 o_intPeriod         : 1;
+} optFlags;
+
 typedef struct rv32iHart{
     u32                 pc;
     u32                 regFile[32];
     u32                 IF;
     u32                 ID;
-    u32                 cycleCounter;
     s32                 immFinal;
     s32                 immPartial;
     ImmediateFields     immFields;
     InstructionFields   instFields;
-    void (*pfnMmioHandler)(u32 addr, u32 *virtMem, struct rv32iHart cpu);
-    void (*pfnIntHandler)(u32 *virtMem, struct rv32iHart cpu);
-    void (*pfnEnvHandler)(u32 *virtMem, struct rv32iHart cpu);
+    u32                 targetAddress;
+    u32                 cycleCounter;
+    u32                 *virtMem;
+    u32                 virtMemRange;
+    u32                 intPeriodVal;
+    u64                 timeoutVal;
+    clock_t             startTime;
+    clock_t             endTime;
+    double              timeDelta;
+    void (*pfnMmioHandler)(struct rv32iHart cpu);
+    void (*pfnIntHandler)(struct rv32iHart cpu);
+    void (*pfnEnvHandler)(struct rv32iHart cpu);
+    optFlags            opts;
 } rv32iHart;
 
-typedef void (*pfnMmioHandler)(u32 addr, u32* virtMem, rv32iHart cpu);
-typedef void (*pfnIntHandler)(u32* virtMem, rv32iHart cpu);
-typedef void (*pfnEnvHandler)(u32* virtMem, rv32iHart cpu);
+typedef void (*pfnMmioHandler)(rv32iHart cpu);
+typedef void (*pfnIntHandler)(rv32iHart cpu);
+typedef void (*pfnEnvHandler)(rv32iHart cpu);
+typedef void (*pfnDbgPrint)(rv32iHart cpu);
+
+typedef enum {
+    OPT_VIRT_MEM_SIZE   = (1<<0),
+    OPT_HANDLER_LIB     = (1<<1),
+    OPT_HELP            = (1<<2),
+    OPT_DEBUG           = (1<<3),
+    OPT_TIMEOUT         = (1<<4),
+    OPT_INTERRUPT       = (1<<5),
+    OPT_UNKNOWN         = (1<<6),
+    OPT_VALUE_OPTS      = (OPT_VIRT_MEM_SIZE | OPT_HANDLER_LIB | OPT_TIMEOUT | OPT_INTERRUPT)
+} SimulatorOptions;
 
 // --- RV32I Instructions ---
 typedef enum {

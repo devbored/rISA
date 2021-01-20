@@ -1,15 +1,16 @@
 #include <stdio.h>
 #include <stdint.h>
+#include <time.h>
 #include "risa.h"
 
-DLLEXPORT void risaMmioHandler(u32 addr, u32 *virtMem, rv32iHart cpu) {
-    printf("MMIO STUB PRINT\n");
+DLLEXPORT void risaMmioHandler(rv32iHart cpu) {
+    DEBUG_PRINT(cpu, "MMIO STUB PRINT\n");
     return;
 }
-DLLEXPORT void risaIntHandler(u32 *vertMem, rv32iHart cpu) {
-    printf("INTERRUPT STUB PRINT\n");
+DLLEXPORT void risaIntHandler(rv32iHart cpu) {
+    DEBUG_PRINT(cpu, "INTERRUPT STUB PRINT\n");
 }
-DLLEXPORT void risaEnvHandler(u32 *vertMem, rv32iHart cpu) {
-    printf("ENVIRONMENT STUB PRINT\n");
+DLLEXPORT void risaEnvHandler(rv32iHart cpu) {
+    DEBUG_PRINT(cpu, "ENVIRONMENT STUB PRINT\n");
     return;
 }

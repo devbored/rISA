@@ -29,9 +29,9 @@ To build without riscv assembly example(s)
 rISA allows for the user to define their own handler function stubs for dealing with either
 MMIO, Environment Calls, or Interrupts.
 
-- `risaMmioHandler` - Handler for MMIO
-- `risaIntHandler` - Handler for Interrupts
-- `risaEnvHandler` - Handler for Environment Calls
+    void risaMmioHandler(u32 addr, u32 *virtMem, rv32iHart cpu);
+    void risaIntHandler(u32 *vertMem, rv32iHart cpu);
+    void risaEnvHandler(u32 *vertMem, rv32iHart cpu);
 
 The user can define their own handlers separately, compile it to a dynamic lib., then pass the
 dynamic lib. as a command-line arg to rISA. This repo comes with example handlers 

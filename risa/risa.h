@@ -8,6 +8,7 @@ typedef int32_t s32;
 
 #ifdef _WIN32
 #define LOAD_LIB(libpath)               LoadLibrary(libpath)
+#define CLOSE_LIB(handle)               FreeLibrary(handle)
 #define LOAD_SYM(handle, fname)         GetProcAddress(handle, fname)
 #define LIB_HANDLE                      HINSTANCE
 #define OPEN_FILE(fp, filename, mode)   do {                                            \
@@ -18,6 +19,7 @@ typedef int32_t s32;
 #define DLLEXPORT                       __declspec(dllexport)
 #else
 #define LOAD_LIB(libpath)               dlopen(libpath, RTLD_LAZY)
+#define CLOSE_LIB(handle)               dlclose(handle)
 #define LOAD_SYM(handle, fname)         dlsym(handle, fname)
 #define LIB_HANDLE                      void*
 #define OPEN_FILE(fp, filename, mode)   do {                                            \
@@ -36,7 +38,6 @@ typedef int32_t s32;
 #define DEBUG_PRINT(cpu, ...)   do {                                                                \
                                     if (cpu.opts.o_debugEnable) { printf("[rISA]: " __VA_ARGS__); } \
                                 } while (0)
-
 
 typedef struct {
     u32 imm11_0  : 12;
@@ -90,6 +91,7 @@ typedef struct rv32iHart{
     clock_t             startTime;
     clock_t             endTime;
     double              timeDelta;
+    LIB_HANDLE          handlerLib;
     void (*pfnMmioHandler)(struct rv32iHart cpu);
     void (*pfnIntHandler)(struct rv32iHart cpu);
     void (*pfnEnvHandler)(struct rv32iHart cpu);

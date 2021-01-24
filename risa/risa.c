@@ -3,6 +3,7 @@
 #include <limits.h>
 #include <string.h>
 #include <signal.h>
+#include <errno.h>
 #include <stdio.h>
 #include <time.h>
 #ifdef _WIN32
@@ -37,6 +38,24 @@ static void printHelp(void) {
     );
 }
 
+static void cleanupSimulator(rv32iHart *cpu, errno_t err) {
+    if (cpu->virtMem != NULL) { free(cpu->virtMem); }
+    if (cpu->handlerLib != NULL) { CLOSE_LIB(cpu->handlerLib); }
+    cpu->timeDelta = ((double)(cpu->endTime - cpu->startTime)) / CLOCKS_PER_SEC;
+    printf(
+        "[rISA]: Simulator stopping.\n"
+        "        Simulation time elapsed: (%f seconds).\n",
+        cpu->timeDelta
+    );
+    switch (err) {
+        case ENOMEM:    exit(ENOMEM);
+        case EINVAL:    exit(EINVAL);
+        case EFAULT:    exit(EFAULT);
+        case EIO:       exit(EIO);
+        default:        exit(0);
+    }
+}
+
 static SimulatorOptions isOption(const char *arg) {
     if      (strcmp(arg, "-m") == 0)    { return OPT_VIRT_MEM_SIZE; }
     else if (strcmp(arg, "-l") == 0)    { return OPT_HANDLER_LIB; }
@@ -51,17 +70,20 @@ static void setupSimulator(int argc, char** argv, rv32iHart *cpu) {
     if (argc == 1) {
         printf("[rISA]: No program specified.\n");
         printHelp();
-        exit(1);
+        cleanupSimulator(cpu, EINVAL);
     }
-    if (isOption(argv[1]) == OPT_HELP) { printHelp(); exit(1); }
+    if (isOption(argv[1]) == OPT_HELP) {
+        printHelp();
+        cleanupSimulator(cpu, 0);
+    }
     for (int i=2; i<argc; ++i) {
         if ((isOption(argv[i]) & OPT_VALUE_OPTS) && ((i+1) == argc)) {
-            printf("[rISA]: Invalid formatting of options. Exiting.\n");
-            exit(1);
+            printf("[rISA]: Invalid formatting of options.\n");
+            cleanupSimulator(cpu, EINVAL);
         }
         if (((i+1) != argc) && (isOption(argv[i]) & OPT_VALUE_OPTS) && (isOption(argv[i+1]) & OPT_VALUE_OPTS)) {
-            printf("[rISA]: Invalid formatting of options. Exiting.\n");
-            exit(1);
+            printf("[rISA]: Invalid formatting of options.\n");
+            cleanupSimulator(cpu, EINVAL);
         }
         SimulatorOptions opt = isOption(argv[i]);
         switch (opt) {
@@ -69,14 +91,14 @@ static void setupSimulator(int argc, char** argv, rv32iHart *cpu) {
                 if (cpu->opts.o_virtMemSize) {
                     printf("[rISA]: Error. Ambiguous multiple '-m' options defined - specify only one.\n");
                     printHelp();
-                    exit(1);
+                    cleanupSimulator(cpu, EINVAL);
                 }
                 int size = atoi(argv[i+1]);
                 cpu->virtMem = (size == 0) ? malloc(DEFAULT_VIRT_MEM_SIZE) : malloc(size);
                 cpu->virtMemRange = (size == 0) ? DEFAULT_VIRT_MEM_SIZE : size;
                 if (cpu->virtMem == NULL) {
-                    printf("[rISA]: Error. Could not allocate virtual memory, exiting.\n");
-                    exit(1);
+                    printf("[rISA]: Error. Could not allocate virtual memory.\n");
+                    cleanupSimulator(cpu, ENOMEM);
                 }
                 cpu->opts.o_virtMemSize = 1;
                 break;
@@ -85,25 +107,24 @@ static void setupSimulator(int argc, char** argv, rv32iHart *cpu) {
                 if (cpu->opts.o_definedHandles) {
                     printf("[rISA]: Error. Ambiguous multiple '-l' options defined - specify only one.\n");
                     printHelp();
-                    exit(1);
+                    cleanupSimulator(cpu, EINVAL);
                 }
-                LIB_HANDLE libHandle = LOAD_LIB(argv[i+1]);
-                if (libHandle == NULL) {
-                    printf("[rISA]: Error. Could not load dynamic library '%s'.\n\tExiting...\n", argv[2]);
-                    exit(1);
+                cpu->handlerLib = LOAD_LIB(argv[i+1]);
+                if (cpu->handlerLib == NULL) {
+                    printf("[rISA]: Error. Could not load dynamic library <%s>.\n\tSkipping...\n", argv[2]);
                 }
-                pfnMmioHandler mmioHandle = (pfnMmioHandler)LOAD_SYM(libHandle, "risaMmioHandler");
+                pfnMmioHandler mmioHandle = (pfnMmioHandler)LOAD_SYM(cpu->handlerLib, "risaMmioHandler");
                 if (mmioHandle != NULL) { cpu->pfnMmioHandler = mmioHandle; }
-                pfnIntHandler intHandle = (pfnIntHandler)LOAD_SYM(libHandle, "risaIntHandler");
+                pfnIntHandler intHandle = (pfnIntHandler)LOAD_SYM(cpu->handlerLib, "risaIntHandler");
                 if (mmioHandle != NULL) { cpu->pfnIntHandler = intHandle; }
-                pfnEnvHandler envHandle = (pfnEnvHandler)LOAD_SYM(libHandle, "risaEnvHandler");
+                pfnEnvHandler envHandle = (pfnEnvHandler)LOAD_SYM(cpu->handlerLib, "risaEnvHandler");
                 if (mmioHandle != NULL) { cpu->pfnEnvHandler = envHandle; }
                 cpu->opts.o_definedHandles = 1;
                 break;
             }
             case OPT_HELP:  // Print help menu
                 printHelp();
-                exit(1);
+                cleanupSimulator(cpu, 0);
             case OPT_DEBUG: // Enable debug print
                 cpu->opts.o_debugEnable = 1;
                 break;
@@ -111,7 +132,7 @@ static void setupSimulator(int argc, char** argv, rv32iHart *cpu) {
                 if (cpu->opts.o_timeout) {
                     printf("[rISA]: Error. Ambiguous multiple '-t' options defined - specify only one.\n");
                     printHelp();
-                    exit(1);
+                    cleanupSimulator(cpu, EINVAL);
                 }
                 long timeout = atol(argv[i+1]);
                 cpu->timeoutVal = (timeout == 0) ? INT32_MAX : timeout;
@@ -122,7 +143,7 @@ static void setupSimulator(int argc, char** argv, rv32iHart *cpu) {
                 if (cpu->opts.o_intPeriod) {
                     printf("[rISA]: Error. Ambiguous multiple '-i' options defined - specify only one.\n");
                     printHelp();
-                    exit(1);
+                    cleanupSimulator(cpu, EINVAL);
                 }
                 int timeout = atoi(argv[i+1]);
                 cpu->intPeriodVal = (timeout == 0) ? DEFAULT_INT_PERIOD : timeout;
@@ -131,8 +152,8 @@ static void setupSimulator(int argc, char** argv, rv32iHart *cpu) {
             }
             default:
                 if ((i>2) && (isOption(argv[i-1]) & ~(OPT_VALUE_OPTS))) {
-                    printf("[rISA]: Invalid formatting of OPTION <value> pair. Exiting.\n");
-                    exit(1);
+                    printf("[rISA]: Invalid formatting of OPTION <value> pair.\n");
+                    cleanupSimulator(cpu, EINVAL);
                 }
             break;
         }
@@ -144,22 +165,22 @@ static void setupSimulator(int argc, char** argv, rv32iHart *cpu) {
     if (cpu->virtMem == NULL) {
         cpu->virtMem = malloc(DEFAULT_VIRT_MEM_SIZE);
         if (cpu->virtMem == NULL) {
-            printf("[rISA]: Error. Could not allocate virtual memory, exiting.\n");
-            exit(1);
+            printf("[rISA]: Error. Could not allocate virtual memory.\n");
+            cleanupSimulator(cpu, ENOMEM);
         }
         cpu->virtMemRange = DEFAULT_VIRT_MEM_SIZE;
     }
     FILE* binFile;
     OPEN_FILE(binFile, argv[1], "rb");
     if (binFile == NULL) {
-        printf("[rISA]: Error. Could not open '%s'.\n\tExiting...\n", argv[1]);
-        exit(1);
+        printf("[rISA]: Error. Could not open <%s>.\n", argv[1]);
+        cleanupSimulator(cpu, EIO);
     }
     for (int i=0; !feof(binFile) != 0; ++i) {
         if (i >= (cpu->virtMemRange / sizeof(u32))) {
-            printf("[rISA]: Error. Could not fit '%s' in simulator's virtual memory.\n\tExiting...\n", argv[1]);
+            printf("[rISA]: Error. Could not fit <%s> in simulator's virtual memory.\n", argv[1]);
             fclose(binFile);
-            exit(1);
+            cleanupSimulator(cpu, ENOMEM);
         }
         fread(cpu->virtMem+i, sizeof(u32), 1, binFile);
     }
@@ -170,8 +191,8 @@ int main(int argc, char** argv) {
     rv32iHart cpu = {0};
     setupSimulator(argc, argv, &cpu);
     printf("[rISA]: Running simulator...\n\n");
-    cpu.startTime = clock();
     signal(SIGINT, sigintHandler);
+    cpu.startTime = clock();
     for (;;) {
         // Fetch
         cpu.IF = ACCESS_MEM_W(cpu.virtMem, cpu.pc);
@@ -290,7 +311,7 @@ int main(int argc, char** argv) {
                 cpu.immFields.fm      = GET_BITSET(cpu.IF, 28, 4);
                 cpu.immFinal = (((s32)cpu.immFields.imm11_0 << 20) >> 20);
                 cpu.ID = (cpu.instFields.funct3 << 7) | cpu.instFields.opcode;
-                //cpu.targetAddress = cpu.regFile[cpu.instFields.rs1] + cpu.immFinal;
+                cpu.targetAddress = cpu.regFile[cpu.instFields.rs1] + cpu.immFinal;
                 // Execute
                 switch ((ItypeInstructions)cpu.ID) {
                     case JALR:  { // Jump and link register
@@ -407,7 +428,7 @@ int main(int argc, char** argv) {
                 cpu.immPartial = cpu.immFields.imm4_0 | (cpu.immFields.imm11_5 << 5);
                 cpu.immFinal = (((s32)cpu.immPartial << 20) >> 20);
                 cpu.ID = (cpu.instFields.funct3 << 7) | cpu.instFields.opcode;
-                //cpu.targetAddress = cpu.regFile[cpu.instFields.rs1] + cpu.immFinal;
+                cpu.targetAddress = cpu.regFile[cpu.instFields.rs1] + cpu.immFinal;
                 // Execute
                 switch ((StypeInstructions)cpu.ID) {
                     case SB: { // Store byte
@@ -547,14 +568,16 @@ int main(int argc, char** argv) {
             }
             default: { // Invalid instruction
                 DEBUG_PRINT(cpu, "Error. (0x%08x) is an invalid instruction.\n", cpu.IF);
-                abort();
+                cpu.endTime = clock();
+                cleanupSimulator(&cpu, EFAULT);
             }
         }
         // Update cpu.pc and counter, check for interrupts, and reset register x0 back to zero
         cpu.pc += 4;
         if (cpu.pc > cpu.virtMemRange) {
             DEBUG_PRINT(cpu, "Error. Program counter is out of range.\n");
-            abort();
+            cpu.endTime = clock();
+            cleanupSimulator(&cpu, EFAULT);
         }
         cpu.cycleCounter++;
         if ((cpu.cycleCounter % cpu.intPeriodVal) == 0) {
@@ -562,15 +585,9 @@ int main(int argc, char** argv) {
         }
         cpu.regFile[0] = 0;
         DEBUG_PRINT(cpu, "<%d> cycle(s)\n\n", cpu.cycleCounter);
-        if (cpu.cycleCounter == cpu.timeoutVal || g_sigIntDet) {
+        if (cpu.cycleCounter == cpu.timeoutVal || g_sigIntDet) { // Normal exit/cleanup
             cpu.endTime = clock();
-            cpu.timeDelta = ((double)(cpu.endTime - cpu.startTime)) / CLOCKS_PER_SEC;
-            printf(
-                "[rISA]: Simulator stopping.\n"
-                "        Simulation time elapsed: (%f seconds).\n",
-                cpu.timeDelta
-            );
-            return 0;
+            cleanupSimulator(&cpu, 0);
         }
     }
     return 0;

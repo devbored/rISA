@@ -16,6 +16,8 @@
 static void stubMmioHandler(rv32iHart *cpu)  { return; }
 static void stubIntHandler(rv32iHart *cpu)   { return; }
 static void stubEnvHandler(rv32iHart *cpu)   { return; }
+static void stubInitHandler(rv32iHart *cpu)  { return; }
+static void stubExitHandler(rv32iHart *cpu)  { return; }
 
 static volatile int g_sigIntDet = 0;
 static SIGINT_RET_TYPE sigintHandler(SIGINT_PARAM sig) { 
@@ -40,7 +42,11 @@ static void printHelp(void) {
 }
 
 static void cleanupSimulator(rv32iHart *cpu, int err) {
-    if (cpu->virtMem != NULL) { free(cpu->virtMem); }
+    cpu->pfnExitHandler(cpu);
+    if (cpu->virtMem != NULL)    { free(cpu->virtMem);  }
+    if (cpu->mmioData != NULL)   { free(cpu->mmioData); }
+    if (cpu->intData != NULL)    { free(cpu->intData);  }
+    if (cpu->envData != NULL)    { free(cpu->envData);  }
     if (cpu->handlerLib != NULL) { CLOSE_LIB(cpu->handlerLib); }
     cpu->timeDelta = ((double)(cpu->endTime - cpu->startTime)) / CLOCKS_PER_SEC;
     printf(
@@ -83,7 +89,7 @@ static void processOptions(int argc, char** argv, rv32iHart *cpu) {
         }
         SimulatorOptions opt = isOption(argv[i]);
         switch (opt) {
-            case OPT_VIRT_MEM_SIZE: { // Attempt to allocate virual memory ("-m")
+            case OPT_VIRT_MEM_SIZE: { // Attempt to allocate virtual memory ("-m")
                 if (cpu->opts.o_virtMemSize) {
                     printf("[rISA]: ERROR - Ambiguous multiple '-m' options defined - specify only one.\n");
                     printHelp();
@@ -121,10 +127,19 @@ static void processOptions(int argc, char** argv, rv32iHart *cpu) {
                 }
                 pfnMmioHandler mmioHandle = (pfnMmioHandler)LOAD_SYM(cpu->handlerLib, "risaMmioHandler");
                 if (mmioHandle != NULL) { cpu->pfnMmioHandler = mmioHandle; }
+                else { printf("[rISA]: INFO - Could not load function risaMmioHandler. Defaulting to stub.\n"); }
                 pfnIntHandler intHandle = (pfnIntHandler)LOAD_SYM(cpu->handlerLib, "risaIntHandler");
-                if (mmioHandle != NULL) { cpu->pfnIntHandler = intHandle; }
+                if (intHandle != NULL) { cpu->pfnIntHandler = intHandle; }
+                else { printf("[rISA]: INFO - Could not load function risaIntHandler. Defaulting to stub.\n"); }
                 pfnEnvHandler envHandle = (pfnEnvHandler)LOAD_SYM(cpu->handlerLib, "risaEnvHandler");
-                if (mmioHandle != NULL) { cpu->pfnEnvHandler = envHandle; }
+                if (envHandle != NULL) { cpu->pfnEnvHandler = envHandle; }
+                else { printf("[rISA]: INFO - Could not load function risaEnvHandler. Defaulting to stub.\n"); }
+                pfnInitHandler initHandle = (pfnInitHandler)LOAD_SYM(cpu->handlerLib, "risaInitHandler");
+                if (initHandle != NULL) { cpu->pfnInitHandler = initHandle; }
+                else { printf("[rISA]: INFO - Could not load function risaInitHandler. Defaulting to stub.\n"); }
+                pfnExitHandler exitHandle = (pfnExitHandler)LOAD_SYM(cpu->handlerLib, "risaExitHandler");
+                if (exitHandle != NULL) { cpu->pfnExitHandler = exitHandle; }
+                else { printf("[rISA]: INFO - Could not load function risaExitHandler. Defaulting to stub.\n"); }
                 cpu->opts.o_definedHandles = 1;
                 break;
             }
@@ -214,10 +229,13 @@ static void setupSimulator(int argc, char **argv, rv32iHart *cpu) {
         cleanupSimulator(cpu, EINVAL);
     }
     processOptions(argc, argv, cpu);
-    if (cpu->pfnMmioHandler == NULL) { cpu->pfnMmioHandler  = stubMmioHandler;    }
-    if (cpu->pfnIntHandler  == NULL) { cpu->pfnIntHandler   = stubIntHandler;     }
-    if (cpu->pfnEnvHandler  == NULL) { cpu->pfnEnvHandler   = stubEnvHandler;     }
-    if (cpu->intPeriodVal   == 0)    { cpu->intPeriodVal    = DEFAULT_INT_PERIOD; }
+    if (cpu->pfnMmioHandler == NULL)  { cpu->pfnMmioHandler = stubMmioHandler;    }
+    if (cpu->pfnIntHandler  == NULL)  { cpu->pfnIntHandler  = stubIntHandler;     }
+    if (cpu->pfnEnvHandler  == NULL)  { cpu->pfnEnvHandler  = stubEnvHandler;     }
+    if (cpu->pfnInitHandler == NULL)  { cpu->pfnInitHandler = stubInitHandler;    }
+    if (cpu->pfnExitHandler == NULL)  { cpu->pfnExitHandler = stubExitHandler;    }
+    if (cpu->intPeriodVal   == 0)     { cpu->intPeriodVal   = DEFAULT_INT_PERIOD; }
+    if (cpu->timeoutVal     == 0)     { cpu->timeoutVal     = INT32_MAX;          }
     if (cpu->virtMem == NULL) {
         cpu->virtMem = malloc(DEFAULT_VIRT_MEM_SIZE);
         if (cpu->virtMem == NULL) {
@@ -227,6 +245,7 @@ static void setupSimulator(int argc, char **argv, rv32iHart *cpu) {
         cpu->virtMemRange = DEFAULT_VIRT_MEM_SIZE;
     }
     loadProgram(argc, argv, cpu);
+    cpu->pfnInitHandler(cpu);
     SIGINT_REGISTER(cpu, sigintHandler);
 }
 
@@ -615,22 +634,22 @@ int main(int argc, char** argv) {
             }
         }
         // Update cpu.pc and counter, check for interrupts, and reset register x0 back to zero
+        cpu.cycleCounter++;
+        DEBUG_PRINT((&cpu), "<%d> cycle(s)\n\n", cpu.cycleCounter);
+        if (cpu.cycleCounter == cpu.timeoutVal || g_sigIntDet) { // Normal exit/cleanup
+            cpu.endTime = clock();
+            cleanupSimulator(&cpu, 0);
+        }
         cpu.pc += 4;
         if (cpu.pc > cpu.virtMemRange) {
             DEBUG_PRINT((&cpu), "Error. Program counter is out of range.\n");
             cpu.endTime = clock();
             cleanupSimulator(&cpu, EFAULT);
         }
-        cpu.cycleCounter++;
         if ((cpu.cycleCounter % cpu.intPeriodVal) == 0) {
             cpu.pfnIntHandler(&cpu);
         }
         cpu.regFile[0] = 0;
-        DEBUG_PRINT((&cpu), "<%d> cycle(s)\n\n", cpu.cycleCounter);
-        if (cpu.cycleCounter == cpu.timeoutVal || g_sigIntDet) { // Normal exit/cleanup
-            cpu.endTime = clock();
-            cleanupSimulator(&cpu, 0);
-        }
     }
     return 0;
 }

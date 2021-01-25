@@ -111,14 +111,21 @@ typedef struct rv32iHart{
     double              timeDelta;
     LIB_HANDLE          handlerLib;
     void (*pfnMmioHandler)(struct rv32iHart *cpu);
+    void                *mmioData;
     void (*pfnIntHandler)(struct rv32iHart *cpu);
+    void                *intData;
     void (*pfnEnvHandler)(struct rv32iHart *cpu);
+    void                *envData;
+    void (*pfnInitHandler)(struct rv32iHart *cpu);
+    void (*pfnExitHandler)(struct rv32iHart *cpu);
     optFlags            opts;
 } rv32iHart;
 
 typedef void (*pfnMmioHandler)(rv32iHart *cpu);
 typedef void (*pfnIntHandler)(rv32iHart *cpu);
 typedef void (*pfnEnvHandler)(rv32iHart *cpu);
+typedef void (*pfnInitHandler)(rv32iHart *cpu);
+typedef void (*pfnExitHandler)(rv32iHart *cpu);
 
 typedef enum {
     OPT_VIRT_MEM_SIZE   = (1<<0),

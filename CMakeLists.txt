@@ -1,13 +1,24 @@
 cmake_minimum_required(VERSION 3.10)
 
 project(risa)
-add_custom_target(RISA ALL
-    COMMAND cmake ${CMAKE_SOURCE_DIR}/risa -Brisa -G ${CMAKE_GENERATOR} -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
-    COMMAND cmake --build risa
+set(SRC_DIR ${CMAKE_SOURCE_DIR}/risa)
+
+add_executable(risa 
+    ${SRC_DIR}/risa.c
 )
-if (NOT DEFINED "NO_EXAMPLES")
-    add_custom_target(EXAMPLES ALL
-        COMMAND cmake ${CMAKE_SOURCE_DIR}/examples -Bexamples -G ${CMAKE_GENERATOR}
-        COMMAND cmake --build examples
-    )
-endif()
+target_link_libraries(
+    risa
+    ${CMAKE_DL_LIBS}
+)
+set_property(
+    TARGET risa
+    PROPERTY C_STANDARD 99
+)
+
+add_library(example_handlers SHARED 
+    ${SRC_DIR}/example_handlers.c
+)
+set_property(
+    TARGET example_handlers
+    PROPERTY C_STANDARD 99
+)

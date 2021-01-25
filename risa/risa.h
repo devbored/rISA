@@ -17,6 +17,15 @@ typedef int32_t s32;
                                             }                                           \
                                         } while (0)
 #define DLLEXPORT                       __declspec(dllexport)
+#define SIGINT_RET_TYPE                 BOOL WINAPI
+#define SIGINT_PARAM                    DWORD
+#define SIGINT_RET                      return TRUE
+#define SIGINT_REGISTER(cpu, function)  do {                                                                    \
+                                            if (!SetConsoleCtrlHandler((PHANDLER_ROUTINE)function,TRUE)) {      \
+                                                printf("[rISA]: Error. Couldn't register sigint handler.\n");   \
+                                                cleanupSimulator(cpu, ECANCELED);                               \
+                                            }                                                                   \
+                                        } while (0)
 #else
 #define LOAD_LIB(libpath)               dlopen(libpath, RTLD_LAZY)
 #define CLOSE_LIB(handle)               dlclose(handle)
@@ -26,6 +35,15 @@ typedef int32_t s32;
                                             fp = fopen(filename, mode);                 \
                                         } while (0)
 #define DLLEXPORT                       
+#define SIGINT_RET_TYPE                 void
+#define SIGINT_PARAM                    int
+#define SIGINT_RET                      
+#define SIGINT_REGISTER(cpu, function)  do {                                                                    \
+                                            if ((signal(SIGINT,function) == SIG_ERR) {                          \
+                                                printf("[rISA]: Error. Couldn't register sigint handler.\n");   \
+                                                cleanupSimulator(cpu, ECANCELED);                               \
+                                            }                                                                   \
+                                        } while (0)
 #endif
 
 #define DEFAULT_VIRT_MEM_SIZE 16384 // 16KB
@@ -35,8 +53,8 @@ typedef int32_t s32;
 #define ACCESS_MEM_W(virtMem, offset) (*(u32*)((u8*)virtMem + (offset)))
 #define ACCESS_MEM_H(virtMem, offset) (*(u16*)((u8*)virtMem + (offset)))
 #define ACCESS_MEM_B(virtMem, offset) (*(u8*)((u8*)virtMem + (offset)))
-#define DEBUG_PRINT(cpu, ...)   do {                                                                \
-                                    if (cpu.opts.o_debugEnable) { printf("[rISA]: " __VA_ARGS__); } \
+#define DEBUG_PRINT(cpu, ...)   do {                                                                        \
+                                    if (cpu.opts.o_debugPrintEnable) { printf("[rISA]: " __VA_ARGS__); }    \
                                 } while (0)
 
 typedef struct {
@@ -66,7 +84,7 @@ typedef struct {
 } InstructionFields;
 
 typedef struct {
-    u32 o_debugEnable       : 1;
+    u32 o_debugPrintEnable  : 1;
     u32 o_virtMemSize       : 1;
     u32 o_definedHandles    : 1;
     u32 o_timeout           : 1;
@@ -75,7 +93,7 @@ typedef struct {
 
 typedef struct rv32iHart{
     u32                 pc;
-    u32                 regFile[32]; // TODO: Make this a ptr and malloc-at-setup to cut down on struct size?
+    u32                 regFile[32];
     u32                 IF;
     u32                 ID;
     s32                 immFinal;
@@ -111,7 +129,7 @@ typedef enum {
     OPT_TIMEOUT         = (1<<4),
     OPT_INTERRUPT       = (1<<5),
     OPT_UNKNOWN         = (1<<6),
-    OPT_VALUE_OPTS      = (OPT_VIRT_MEM_SIZE | OPT_HANDLER_LIB | OPT_TIMEOUT | OPT_INTERRUPT)
+    VALUE_OPTS          = (OPT_VIRT_MEM_SIZE | OPT_HANDLER_LIB | OPT_TIMEOUT | OPT_INTERRUPT)
 } SimulatorOptions;
 
 // --- RV32I Instructions ---

@@ -39,7 +39,7 @@ typedef int32_t s32;
 #define SIGINT_PARAM                    int
 #define SIGINT_RET                      
 #define SIGINT_REGISTER(cpu, function)  do {                                                                    \
-                                            if ((signal(SIGINT,function) == SIG_ERR) {                          \
+                                            if ((signal(SIGINT,function) == SIG_ERR)) {                         \
                                                 printf("[rISA]: Error. Couldn't register sigint handler.\n");   \
                                                 cleanupSimulator(cpu, ECANCELED);                               \
                                             }                                                                   \
@@ -54,7 +54,7 @@ typedef int32_t s32;
 #define ACCESS_MEM_H(virtMem, offset) (*(u16*)((u8*)virtMem + (offset)))
 #define ACCESS_MEM_B(virtMem, offset) (*(u8*)((u8*)virtMem + (offset)))
 #define DEBUG_PRINT(cpu, ...)   do {                                                                        \
-                                    if (cpu.opts.o_debugPrintEnable) { printf("[rISA]: " __VA_ARGS__); }    \
+                                    if (cpu->opts.o_debugPrintEnable) { printf("[rISA]: " __VA_ARGS__); }   \
                                 } while (0)
 
 typedef struct {
@@ -110,16 +110,15 @@ typedef struct rv32iHart{
     clock_t             endTime;
     double              timeDelta;
     LIB_HANDLE          handlerLib;
-    void (*pfnMmioHandler)(struct rv32iHart cpu);
-    void (*pfnIntHandler)(struct rv32iHart cpu);
-    void (*pfnEnvHandler)(struct rv32iHart cpu);
+    void (*pfnMmioHandler)(struct rv32iHart *cpu);
+    void (*pfnIntHandler)(struct rv32iHart *cpu);
+    void (*pfnEnvHandler)(struct rv32iHart *cpu);
     optFlags            opts;
 } rv32iHart;
 
-typedef void (*pfnMmioHandler)(rv32iHart cpu);
-typedef void (*pfnIntHandler)(rv32iHart cpu);
-typedef void (*pfnEnvHandler)(rv32iHart cpu);
-typedef void (*pfnDbgPrint)(rv32iHart cpu);
+typedef void (*pfnMmioHandler)(rv32iHart *cpu);
+typedef void (*pfnIntHandler)(rv32iHart *cpu);
+typedef void (*pfnEnvHandler)(rv32iHart *cpu);
 
 typedef enum {
     OPT_VIRT_MEM_SIZE   = (1<<0),

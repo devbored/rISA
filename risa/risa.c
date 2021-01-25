@@ -13,9 +13,9 @@
 #endif
 #include "risa.h"
 
-static void stubMmioHandler(rv32iHart cpu)  { return; }
-static void stubIntHandler(rv32iHart cpu)   { return; }
-static void stubEnvHandler(rv32iHart cpu)   { return; }
+static void stubMmioHandler(rv32iHart *cpu)  { return; }
+static void stubIntHandler(rv32iHart *cpu)   { return; }
+static void stubEnvHandler(rv32iHart *cpu)   { return; }
 
 static volatile int g_sigIntDet = 0;
 static SIGINT_RET_TYPE sigintHandler(SIGINT_PARAM sig) { 
@@ -30,7 +30,7 @@ static void printHelp(void) {
         "\n\n"
         "           OPTIONS:\n"
         "               -m <int>  : Virtual memory/IO size (in bytes).\n"
-        "               -l <file> : Dynamic library file for user-defined handler functions.\n"
+        "               -l <file> : Dynamic library file to user-defined handler functions.\n"
         "               -t <int>  : Simulator cycle timeout value [DEFAULT=INT32_MAX].\n"
         "               -i <int>  : Simulator interrupt-check timeout value [DEFAULT=500].\n"
         "               -h        : Print help and exit.\n"
@@ -39,7 +39,7 @@ static void printHelp(void) {
     );
 }
 
-static void cleanupSimulator(rv32iHart *cpu, errno_t err) {
+static void cleanupSimulator(rv32iHart *cpu, int err) {
     if (cpu->virtMem != NULL) { free(cpu->virtMem); }
     if (cpu->handlerLib != NULL) { CLOSE_LIB(cpu->handlerLib); }
     cpu->timeDelta = ((double)(cpu->endTime - cpu->startTime)) / CLOCKS_PER_SEC;
@@ -252,90 +252,90 @@ int main(int argc, char** argv) {
                 switch ((RtypeInstructions)cpu.ID) {
                     case SLLI: { // Shift left logical by immediate (i.e. rs2 is shamt)
                         cpu.regFile[cpu.instFields.rd] = cpu.regFile[cpu.instFields.rs1] << cpu.instFields.rs2;
-                        DEBUG_PRINT(cpu, "Current instruction: slli x%d, x%d, %d\n",
+                        DEBUG_PRINT((&cpu), "Current instruction: slli x%d, x%d, %d\n",
                             cpu.instFields.rd, cpu.instFields.rs1, cpu.instFields.rs2);
                         break;
                     }
                     case SRLI: { // Shift right logical by immediate (i.e. rs2 is shamt)
                         cpu.regFile[cpu.instFields.rd] = cpu.regFile[cpu.instFields.rs1] >> cpu.instFields.rs2;
-                        DEBUG_PRINT(cpu, "Current instruction: srli x%d, x%d, %d\n",
+                        DEBUG_PRINT((&cpu), "Current instruction: srli x%d, x%d, %d\n",
                             cpu.instFields.rd, cpu.instFields.rs1, cpu.instFields.rs2);
                         break;
                     }
                     case SRAI: { // Shift right arithmetic by immediate (i.e. rs2 is shamt)
                         cpu.regFile[cpu.instFields.rd] = 
                             (u32)((s32)cpu.regFile[cpu.instFields.rs1] >> cpu.instFields.rs2);
-                        DEBUG_PRINT(cpu, "Current instruction: srai x%d, x%d, %d\n",
+                        DEBUG_PRINT((&cpu), "Current instruction: srai x%d, x%d, %d\n",
                             cpu.instFields.rd, cpu.instFields.rs1, cpu.instFields.rs2);
                         break;
                     }
                     case ADD:  { // Addition
                         cpu.regFile[cpu.instFields.rd] = 
                             cpu.regFile[cpu.instFields.rs1] + cpu.regFile[cpu.instFields.rs2];
-                        DEBUG_PRINT(cpu, "Current instruction: add x%d, x%d, %d\n",
+                        DEBUG_PRINT((&cpu), "Current instruction: add x%d, x%d, %d\n",
                             cpu.instFields.rd, cpu.instFields.rs1, cpu.instFields.rs2);
                         break;
                     }
                     case SUB:  { // Subtraction
                         cpu.regFile[cpu.instFields.rd] = 
                             cpu.regFile[cpu.instFields.rs1] - cpu.regFile[cpu.instFields.rs2];
-                        DEBUG_PRINT(cpu, "Current instruction: sub x%d, x%d, %d\n",
+                        DEBUG_PRINT((&cpu), "Current instruction: sub x%d, x%d, %d\n",
                             cpu.instFields.rd, cpu.instFields.rs1, cpu.instFields.rs2);
                         break;
                     }
                     case SLL:  { // Shift left logical
                         cpu.regFile[cpu.instFields.rd] = 
                             cpu.regFile[cpu.instFields.rs1] << cpu.regFile[cpu.instFields.rs2];
-                        DEBUG_PRINT(cpu, "Current instruction: sll x%d, x%d, %d\n",
+                        DEBUG_PRINT((&cpu), "Current instruction: sll x%d, x%d, %d\n",
                             cpu.instFields.rd, cpu.instFields.rs1, cpu.instFields.rs2);
                         break;
                     }
                     case SLT:  { // Set if less than (signed)
                         cpu.regFile[cpu.instFields.rd] = 
                             ((s32)cpu.regFile[cpu.instFields.rs1] < (s32)cpu.regFile[cpu.instFields.rs2]) ? 1 : 0;
-                        DEBUG_PRINT(cpu, "Current instruction: slt x%d, x%d, %d\n",
+                        DEBUG_PRINT((&cpu), "Current instruction: slt x%d, x%d, %d\n",
                             cpu.instFields.rd, cpu.instFields.rs1, cpu.instFields.rs2);
                         break;
                     }
                     case SLTU: { // Set if less than (unsigned)
                         cpu.regFile[cpu.instFields.rd] = 
                             (cpu.regFile[cpu.instFields.rs1] < cpu.regFile[cpu.instFields.rs2]) ? 1 : 0;
-                        DEBUG_PRINT(cpu, "Current instruction: sltu x%d, x%d, %d\n",
+                        DEBUG_PRINT((&cpu), "Current instruction: sltu x%d, x%d, %d\n",
                             cpu.instFields.rd, cpu.instFields.rs1, cpu.instFields.rs2);
                         break;
                     }
                     case XOR:  { // Bitwise xor
                         cpu.regFile[cpu.instFields.rd] = 
                             cpu.regFile[cpu.instFields.rs1] ^ cpu.regFile[cpu.instFields.rs2];
-                        DEBUG_PRINT(cpu, "Current instruction: xor x%d, x%d, %d\n",
+                        DEBUG_PRINT((&cpu), "Current instruction: xor x%d, x%d, %d\n",
                             cpu.instFields.rd, cpu.instFields.rs1, cpu.instFields.rs2);
                         break;
                     }
                     case SRL:  { // Shift right logical
                         cpu.regFile[cpu.instFields.rd] = 
                             cpu.regFile[cpu.instFields.rs1] >> cpu.regFile[cpu.instFields.rs2];
-                        DEBUG_PRINT(cpu, "Current instruction: srl x%d, x%d, %d\n",
+                        DEBUG_PRINT((&cpu), "Current instruction: srl x%d, x%d, %d\n",
                             cpu.instFields.rd, cpu.instFields.rs1, cpu.instFields.rs2);
                         break;
                     }
                     case SRA:  { // Shift right arithmetic
                         cpu.regFile[cpu.instFields.rd] = 
                             (u32)((s32)cpu.regFile[cpu.instFields.rs1] >> cpu.regFile[cpu.instFields.rs2]);
-                        DEBUG_PRINT(cpu, "Current instruction: sra x%d, x%d, %d\n",
+                        DEBUG_PRINT((&cpu), "Current instruction: sra x%d, x%d, %d\n",
                             cpu.instFields.rd, cpu.instFields.rs1, cpu.instFields.rs2);
                         break;
                     }
                     case OR:   { // Bitwise or
                         cpu.regFile[cpu.instFields.rd] = 
                             cpu.regFile[cpu.instFields.rs1] | cpu.regFile[cpu.instFields.rs2];
-                        DEBUG_PRINT(cpu, "Current instruction: or x%d, x%d, %d\n",
+                        DEBUG_PRINT((&cpu), "Current instruction: or x%d, x%d, %d\n",
                             cpu.instFields.rd, cpu.instFields.rs1, cpu.instFields.rs2);
                         break;
                     }
                     case AND:  { // Bitwise and
                         cpu.regFile[cpu.instFields.rd] = 
                             cpu.regFile[cpu.instFields.rs1] & cpu.regFile[cpu.instFields.rs2];
-                        DEBUG_PRINT(cpu, "Current instruction: and x%d, x%d, %d\n",
+                        DEBUG_PRINT((&cpu), "Current instruction: and x%d, x%d, %d\n",
                             cpu.instFields.rd, cpu.instFields.rs1, cpu.instFields.rs2);
                         break;
                     }
@@ -359,87 +359,87 @@ int main(int argc, char** argv) {
                     case JALR:  { // Jump and link register
                         cpu.regFile[cpu.instFields.rd] = cpu.pc + 4;
                         cpu.pc = ((cpu.targetAddress) & 0xfffe) - 4;
-                        DEBUG_PRINT(cpu, "Current instruction: jalr x%d, x%d, %d\n",
+                        DEBUG_PRINT((&cpu), "Current instruction: jalr x%d, x%d, %d\n",
                             cpu.instFields.rd, cpu.instFields.rs1, cpu.immFields.imm11_0);
                         break;
                     }
                     case LB:    { // Load byte (signed)
                         u32 loadByte = (u32)ACCESS_MEM_B(cpu.virtMem, cpu.targetAddress);
                         cpu.regFile[cpu.instFields.rd] = (u32)((s32)(loadByte << 24) >> 24);
-                        DEBUG_PRINT(cpu, "Current instruction: lb x%d, %d(x%d)\n",
+                        DEBUG_PRINT((&cpu), "Current instruction: lb x%d, %d(x%d)\n",
                             cpu.instFields.rd, cpu.immFields.imm11_0, cpu.instFields.rs1);
                         break;
                     }
                     case LH:    { // Load halfword (signed)
                         u32 loadHalfword = (u32)ACCESS_MEM_H(cpu.virtMem, cpu.targetAddress);
                         cpu.regFile[cpu.instFields.rd] = (u32)((s32)(loadHalfword << 16) >> 16);
-                        DEBUG_PRINT(cpu, "Current instruction: lh x%d, %d(x%d)\n",
+                        DEBUG_PRINT((&cpu), "Current instruction: lh x%d, %d(x%d)\n",
                             cpu.instFields.rd, cpu.immFields.imm11_0, cpu.instFields.rs1);
                         break;
                     }
                     case LW:    { // Load word
                         cpu.regFile[cpu.instFields.rd] = 
                             ACCESS_MEM_W(cpu.virtMem, cpu.targetAddress);
-                        DEBUG_PRINT(cpu, "Current instruction: lw x%d, %d(x%d)\n",
+                        DEBUG_PRINT((&cpu), "Current instruction: lw x%d, %d(x%d)\n",
                             cpu.instFields.rd, cpu.immFields.imm11_0, cpu.instFields.rs1);
                         break;
                     }
                     case LBU:   { // Load byte (unsigned)
                         cpu.regFile[cpu.instFields.rd] = 
                             (u32)ACCESS_MEM_B(cpu.virtMem, cpu.targetAddress);
-                        DEBUG_PRINT(cpu, "Current instruction: lbu x%d, %d(x%d)\n",
+                        DEBUG_PRINT((&cpu), "Current instruction: lbu x%d, %d(x%d)\n",
                             cpu.instFields.rd, cpu.immFields.imm11_0, cpu.instFields.rs1);
                         break;
                     }
                     case LHU:   { // Load halfword (unsigned)
                         cpu.regFile[cpu.instFields.rd] = 
                             (u32)ACCESS_MEM_H(cpu.virtMem, cpu.targetAddress);
-                        DEBUG_PRINT(cpu, "Current instruction: lhu x%d, %d(x%d)\n",
+                        DEBUG_PRINT((&cpu), "Current instruction: lhu x%d, %d(x%d)\n",
                             cpu.instFields.rd, cpu.immFields.imm11_0, cpu.instFields.rs1);
                         break;
                     }
                     case ADDI:  { // Add immediate
                         cpu.regFile[cpu.instFields.rd] = cpu.targetAddress;
-                        DEBUG_PRINT(cpu, "Current instruction: addi x%d, x%d, %d\n",
+                        DEBUG_PRINT((&cpu), "Current instruction: addi x%d, x%d, %d\n",
                             cpu.instFields.rd, cpu.instFields.rs1, cpu.immFields.imm11_0);
                         break;
                     }
                     case SLTI:  { // Set if less than immediate (signed)
                         cpu.regFile[cpu.instFields.rd] = 
                             ((s32)cpu.regFile[cpu.instFields.rs1] < cpu.immFinal) ? 1 : 0;
-                        DEBUG_PRINT(cpu, "Current instruction: slti x%d, x%d, %d\n",
+                        DEBUG_PRINT((&cpu), "Current instruction: slti x%d, x%d, %d\n",
                             cpu.instFields.rd, cpu.instFields.rs1, cpu.immFields.imm11_0);
                         break;
                     }
                     case SLTIU: { // Set if less than immediate (unsigned)
                         cpu.regFile[cpu.instFields.rd] = 
                             (cpu.regFile[cpu.instFields.rs1] < (u32)cpu.immFinal) ? 1 : 0;
-                        DEBUG_PRINT(cpu, "Current instruction: sltiu x%d, x%d, %d\n",
+                        DEBUG_PRINT((&cpu), "Current instruction: sltiu x%d, x%d, %d\n",
                             cpu.instFields.rd, cpu.instFields.rs1, cpu.immFields.imm11_0);
                         break;
                     }
                     case XORI:  { // Bitwise exclusive or immediate
                         cpu.regFile[cpu.instFields.rd] = cpu.regFile[cpu.instFields.rs1] ^ cpu.immFinal;
-                        DEBUG_PRINT(cpu, "Current instruction: xori x%d, x%d, %d\n",
+                        DEBUG_PRINT((&cpu), "Current instruction: xori x%d, x%d, %d\n",
                             cpu.instFields.rd, cpu.instFields.rs1, cpu.immFields.imm11_0);
                         break;
                     }
                     case ORI:   { // Bitwise or immediate
                         cpu.regFile[cpu.instFields.rd] = cpu.regFile[cpu.instFields.rs1] | cpu.immFinal;
-                        DEBUG_PRINT(cpu, "Current instruction: ori x%d, x%d, %d\n",
+                        DEBUG_PRINT((&cpu), "Current instruction: ori x%d, x%d, %d\n",
                             cpu.instFields.rd, cpu.instFields.rs1, cpu.immFields.imm11_0);
                         break;
                     }
                     case ANDI:  { // Bitwise and immediate
                         cpu.regFile[cpu.instFields.rd] = cpu.regFile[cpu.instFields.rs1] & cpu.immFinal;
-                        DEBUG_PRINT(cpu, "Current instruction: andi x%d, x%d, %d\n",
+                        DEBUG_PRINT((&cpu), "Current instruction: andi x%d, x%d, %d\n",
                             cpu.instFields.rd, cpu.instFields.rs1, cpu.immFields.imm11_0);
                         break;
                     }
                     case FENCE: { // FENCE - order device I/O and memory accesses
-                        // NOP for now...
-                        DEBUG_PRINT(cpu, "Current instruction: fence %d, %d\n",
+                        DEBUG_PRINT((&cpu), "Current instruction: fence %d, %d\n",
                             cpu.immFields.pred, cpu.immFields.succ);
+                        cpu.pfnEnvHandler(&cpu);
                         break;
                     }
                     // Catch environment-type instructions
@@ -447,15 +447,15 @@ int main(int argc, char** argv) {
                         cpu.ID = (cpu.immFields.imm11_0 << 20) | (cpu.instFields.funct3 << 7) | cpu.instFields.opcode;
                         switch ((ItypeInstructions)cpu.ID) {
                             case ECALL: { // ECALL - request a syscall
-                                DEBUG_PRINT(cpu, "Current instruction: ecall\n");
+                                DEBUG_PRINT((&cpu), "Current instruction: ecall\n");
                                 break;
                             }
                             case EBREAK: { // EBREAK - halt processor execution, transfer control to debugger
-                                DEBUG_PRINT(cpu, "Current instruction: ebreak\n");
+                                DEBUG_PRINT((&cpu), "Current instruction: ebreak\n");
                                 break;
                             }
                         }
-                        cpu.pfnEnvHandler(cpu);
+                        cpu.pfnEnvHandler(&cpu);
                     }
                 }
                 break;
@@ -476,26 +476,26 @@ int main(int argc, char** argv) {
                     case SB: { // Store byte
                         ACCESS_MEM_B(cpu.virtMem, cpu.targetAddress) =
                             (u8)cpu.regFile[cpu.instFields.rs2];
-                        DEBUG_PRINT(cpu, "Current instruction: sb x%d, %d(x%d)\n",
+                        DEBUG_PRINT((&cpu), "Current instruction: sb x%d, %d(x%d)\n",
                             cpu.instFields.rs2, cpu.immPartial, cpu.instFields.rs1);
                         break;
                     }
                     case SH: { // Store halfword
                         ACCESS_MEM_H(cpu.virtMem, cpu.targetAddress) =
                             (u16)cpu.regFile[cpu.instFields.rs2];
-                        DEBUG_PRINT(cpu, "Current instruction: sh x%d, %d(x%d)\n",
+                        DEBUG_PRINT((&cpu), "Current instruction: sh x%d, %d(x%d)\n",
                             cpu.instFields.rs2, cpu.immPartial, cpu.instFields.rs1);
                         break;
                     }
                     case SW: { // Store word
                         ACCESS_MEM_W(cpu.virtMem, cpu.targetAddress) =
                             cpu.regFile[cpu.instFields.rs2];
-                        DEBUG_PRINT(cpu, "Current instruction: sw x%d, %d(x%d)\n",
+                        DEBUG_PRINT((&cpu), "Current instruction: sw x%d, %d(x%d)\n",
                             cpu.instFields.rs2, cpu.immPartial, cpu.instFields.rs1);
                         break;
                     }
                 }
-                cpu.pfnMmioHandler(cpu);
+                cpu.pfnMmioHandler(&cpu);
                 break;
             }
             case B: {
@@ -517,7 +517,7 @@ int main(int argc, char** argv) {
                         if ((s32)cpu.regFile[cpu.instFields.rs1] == (s32)cpu.regFile[cpu.instFields.rs2]) {
                             cpu.pc += cpu.immFinal - 4;
                         }
-                        DEBUG_PRINT(cpu, "Current instruction: beq x%d, x%d, %d\n",
+                        DEBUG_PRINT((&cpu), "Current instruction: beq x%d, x%d, %d\n",
                             cpu.instFields.rs1, cpu.instFields.rs2, cpu.immFinal);
                         break;
                     }
@@ -525,7 +525,7 @@ int main(int argc, char** argv) {
                         if ((s32)cpu.regFile[cpu.instFields.rs1] != (s32)cpu.regFile[cpu.instFields.rs2]) {
                             cpu.pc += cpu.immFinal - 4;
                         }
-                        DEBUG_PRINT(cpu, "Current instruction: bne x%d, x%d, %d\n",
+                        DEBUG_PRINT((&cpu), "Current instruction: bne x%d, x%d, %d\n",
                             cpu.instFields.rs1, cpu.instFields.rs2, cpu.immFinal);
                         break;
                     }
@@ -533,7 +533,7 @@ int main(int argc, char** argv) {
                         if ((s32)cpu.regFile[cpu.instFields.rs1] < (s32)cpu.regFile[cpu.instFields.rs2]) {
                             cpu.pc += cpu.immFinal - 4;
                         }
-                        DEBUG_PRINT(cpu, "Current instruction: blt x%d, x%d, %d\n",
+                        DEBUG_PRINT((&cpu), "Current instruction: blt x%d, x%d, %d\n",
                             cpu.instFields.rs1, cpu.instFields.rs2, cpu.immFinal);
                         break;
                     }
@@ -541,7 +541,7 @@ int main(int argc, char** argv) {
                         if ((s32)cpu.regFile[cpu.instFields.rs1] >= (s32)cpu.regFile[cpu.instFields.rs2]) {
                             cpu.pc += cpu.immFinal - 4;
                         }
-                        DEBUG_PRINT(cpu, "Current instruction: bge x%d, x%d, %d\n",
+                        DEBUG_PRINT((&cpu), "Current instruction: bge x%d, x%d, %d\n",
                             cpu.instFields.rs1, cpu.instFields.rs2, cpu.immFinal);
                         break;
                     }
@@ -549,7 +549,7 @@ int main(int argc, char** argv) {
                         if (cpu.regFile[cpu.instFields.rs1] < cpu.regFile[cpu.instFields.rs2]) {
                             cpu.pc += cpu.immFinal - 4;
                         }
-                        DEBUG_PRINT(cpu, "Current instruction: bltu x%d, x%d, %d\n",
+                        DEBUG_PRINT((&cpu), "Current instruction: bltu x%d, x%d, %d\n",
                             cpu.instFields.rs1, cpu.instFields.rs2, cpu.immFinal);
                         break;
                     }
@@ -557,7 +557,7 @@ int main(int argc, char** argv) {
                         if (cpu.regFile[cpu.instFields.rs1] >= cpu.regFile[cpu.instFields.rs2]) {
                             cpu.pc += cpu.immFinal - 4;
                         }
-                        DEBUG_PRINT(cpu, "Current instruction: bgeu x%d, x%d, %d\n",
+                        DEBUG_PRINT((&cpu), "Current instruction: bgeu x%d, x%d, %d\n",
                             cpu.instFields.rs1, cpu.instFields.rs2, cpu.immFinal);
                         break;
                     }
@@ -573,13 +573,13 @@ int main(int argc, char** argv) {
                 switch ((UtypeInstructions)cpu.instFields.opcode) {
                     case LUI:   { // Load Upper Immediate
                         cpu.regFile[cpu.instFields.rd] = cpu.immFinal;
-                        DEBUG_PRINT(cpu, "Current instruction: lui x%d, %d\n",
+                        DEBUG_PRINT((&cpu), "Current instruction: lui x%d, %d\n",
                             cpu.instFields.rd, cpu.immFinal);
                         break;
                     }
                     case AUIPC: { // Add Upper Immediate to cpu.pc
                         cpu.regFile[cpu.instFields.rd] = cpu.pc + cpu.immFinal;
-                        DEBUG_PRINT(cpu, "Current instruction: auipc x%d, %d\n",
+                        DEBUG_PRINT((&cpu), "Current instruction: auipc x%d, %d\n",
                             cpu.instFields.rd, cpu.immFinal);
                         break;
                     }
@@ -601,7 +601,7 @@ int main(int argc, char** argv) {
                     case JAL: { // Jump and link
                         cpu.regFile[cpu.instFields.rd] = cpu.pc + 4;
                         cpu.pc += cpu.immFinal - 4;
-                        DEBUG_PRINT(cpu, "Current instruction: jal x%d, %d\n",
+                        DEBUG_PRINT((&cpu), "Current instruction: jal x%d, %d\n",
                             cpu.instFields.rd, cpu.immFinal);
                         break;
                     }
@@ -609,7 +609,7 @@ int main(int argc, char** argv) {
                 break;
             }
             default: { // Invalid instruction
-                DEBUG_PRINT(cpu, "Error. (0x%08x) is an invalid instruction.\n", cpu.IF);
+                DEBUG_PRINT((&cpu), "Error. (0x%08x) is an invalid instruction.\n", cpu.IF);
                 cpu.endTime = clock();
                 cleanupSimulator(&cpu, EILSEQ);
             }
@@ -617,16 +617,16 @@ int main(int argc, char** argv) {
         // Update cpu.pc and counter, check for interrupts, and reset register x0 back to zero
         cpu.pc += 4;
         if (cpu.pc > cpu.virtMemRange) {
-            DEBUG_PRINT(cpu, "Error. Program counter is out of range.\n");
+            DEBUG_PRINT((&cpu), "Error. Program counter is out of range.\n");
             cpu.endTime = clock();
             cleanupSimulator(&cpu, EFAULT);
         }
         cpu.cycleCounter++;
         if ((cpu.cycleCounter % cpu.intPeriodVal) == 0) {
-            cpu.pfnIntHandler(cpu);
+            cpu.pfnIntHandler(&cpu);
         }
         cpu.regFile[0] = 0;
-        DEBUG_PRINT(cpu, "<%d> cycle(s)\n\n", cpu.cycleCounter);
+        DEBUG_PRINT((&cpu), "<%d> cycle(s)\n\n", cpu.cycleCounter);
         if (cpu.cycleCounter == cpu.timeoutVal || g_sigIntDet) { // Normal exit/cleanup
             cpu.endTime = clock();
             cleanupSimulator(&cpu, 0);

@@ -42,12 +42,12 @@ static void printHelp(void) {
 }
 
 static void cleanupSimulator(rv32iHart *cpu, int err) {
-    cpu->pfnExitHandler(cpu);
-    if (cpu->virtMem != NULL)    { free(cpu->virtMem);  }
-    if (cpu->mmioData != NULL)   { free(cpu->mmioData); }
-    if (cpu->intData != NULL)    { free(cpu->intData);  }
-    if (cpu->envData != NULL)    { free(cpu->envData);  }
-    if (cpu->handlerLib != NULL) { CLOSE_LIB(cpu->handlerLib); }
+    if (cpu->pfnExitHandler != NULL) { cpu->pfnExitHandler(cpu); }
+    if (cpu->virtMem != NULL)        { free(cpu->virtMem);  }
+    if (cpu->mmioData != NULL)       { free(cpu->mmioData); }
+    if (cpu->intData != NULL)        { free(cpu->intData);  }
+    if (cpu->envData != NULL)        { free(cpu->envData);  }
+    if (cpu->handlerLib != NULL)     { CLOSE_LIB(cpu->handlerLib); }
     cpu->timeDelta = ((double)(cpu->endTime - cpu->startTime)) / CLOCKS_PER_SEC;
     printf(
         "[rISA]: Simulator stopping.\n"

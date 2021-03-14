@@ -54,17 +54,3 @@ It is the users responsibility to ensure registering and calling the `risaInitHa
 data to these pointers, as well as registering and calling `risaExitHandler` to be able to use the
 data items one last time before the simulation performs cleanup on exiting. The cleanup for the
 opaque user-data items above is surface-level only (deeper freeing of resources needs to be done in `risaExitHandler`).
-
-## Usage
-
-    [rISA]:    Usage: risa [OPTIONS] <program_binary>
-               Example: risa -m 1024 my_riscv_program.hex
-    
-               OPTIONS:
-                   -m <int>  : Virtual memory/IO size (in bytes).
-                   -l <file> : Dynamic library file to user-defined handler functions.
-                   -t <int>  : Simulator cycle timeout value [DEFAULT=INT32_MAX].
-                   -i <int>  : Simulator interrupt-check timeout value [DEFAULT=500].
-                   -h        : Print help and exit.
-                   -p        : Enable debug printing.
-

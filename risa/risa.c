@@ -11,21 +11,15 @@
 #else
 #include <dlfcn.h>
 #endif
-#include "risa_core.h"
+#include "risa.h"
 
-static void stubMmioHandler(rv32iHart *cpu)  { return; }
-static void stubIntHandler(rv32iHart *cpu)   { return; }
-static void stubEnvHandler(rv32iHart *cpu)   { return; }
-static void stubInitHandler(rv32iHart *cpu)  { return; }
-static void stubExitHandler(rv32iHart *cpu)  { return; }
+void stubMmioHandler(rv32iHart *cpu)  { return; }
+void stubIntHandler(rv32iHart *cpu)   { return; }
+void stubEnvHandler(rv32iHart *cpu)   { return; }
+void stubInitHandler(rv32iHart *cpu)  { return; }
+void stubExitHandler(rv32iHart *cpu)  { return; }
 
-static volatile int g_sigIntDet = 0;
-static SIGINT_RET_TYPE sigintHandler(SIGINT_PARAM sig) { 
-    g_sigIntDet = 1;
-    SIGINT_RET;
-}
-
-static void printHelp(void) {
+void printHelp(void) {
     printf(
         "[rISA]:    Usage: risa [OPTIONS] <program_binary>\n"
         "           Example: risa -m 1024 my_riscv_program.hex"
@@ -40,7 +34,7 @@ static void printHelp(void) {
     );
 }
 
-static void cleanupSimulator(rv32iHart *cpu, int err) {
+void cleanupSimulator(rv32iHart *cpu, int err) {
     if (cpu->pfnExitHandler != NULL) { cpu->pfnExitHandler(cpu);    }
     if (cpu->virtMem != NULL)        { free(cpu->virtMem);          }
     if (cpu->mmioData != NULL)       { free(cpu->mmioData);         }
@@ -64,7 +58,7 @@ static void cleanupSimulator(rv32iHart *cpu, int err) {
     }
 }
 
-static SimulatorOptions isOption(const char *arg) {
+SimulatorOptions isOption(const char *arg) {
     if      (strcmp(arg, "-m") == 0)    { return OPT_VIRT_MEM_SIZE; }
     else if (strcmp(arg, "-l") == 0)    { return OPT_HANDLER_LIB;   }
     else if (strcmp(arg, "-h") == 0)    { return OPT_HELP;          }
@@ -73,7 +67,7 @@ static SimulatorOptions isOption(const char *arg) {
     else                                { return OPT_UNKNOWN;       }
 }
 
-static void processOptions(int argc, char** argv, rv32iHart *cpu) {
+void processOptions(int argc, char** argv, rv32iHart *cpu) {
     for (int i=1; i<argc; ++i) {
         if (((i+1) != argc) && (isOption(argv[i]) & VALUE_OPTS) && (isOption(argv[i+1]) & VALUE_OPTS)) {
             printf("[rISA]: ERROR - Invalid formatting of options.\n");
@@ -177,7 +171,7 @@ static void processOptions(int argc, char** argv, rv32iHart *cpu) {
     }
 }
 
-static void loadProgram(int argc, char **argv, rv32iHart *cpu) {
+void loadProgram(int argc, char **argv, rv32iHart *cpu) {
     if ((isOption(argv[argc-1]) != OPT_UNKNOWN) || (isOption(argv[argc-2]) == VALUE_OPTS)) {
         printf("[rISA]: ERROR - No program specified.\n");
         printHelp();
@@ -201,7 +195,7 @@ static void loadProgram(int argc, char **argv, rv32iHart *cpu) {
     fclose(binFile);
 }
 
-static void setupSimulator(int argc, char **argv, rv32iHart *cpu) {
+void setupSimulator(int argc, char **argv, rv32iHart *cpu) {
     if (argc == 1) {
         printf("[rISA]: ERROR - No program specified.\n");
         printHelp();
@@ -225,354 +219,135 @@ static void setupSimulator(int argc, char **argv, rv32iHart *cpu) {
     }
     loadProgram(argc, argv, cpu);
     cpu->pfnInitHandler(cpu);
-    SIGINT_REGISTER(cpu, sigintHandler);
 }
 
-int main(int argc, char** argv) {
-    rv32iHart cpu = {0};
-    setupSimulator(argc, argv, &cpu);
-    printf("[rISA]: Running simulator...\n\n");
-    cpu.startTime = clock();
-    for (;;) {
-        // Fetch
-        cpu.IF = ACCESS_MEM_W(cpu.virtMem, cpu.pc);
-        cpu.instFields.opcode = GET_OPCODE(cpu.IF);
-        switch (OpcodeToFormat[cpu.instFields.opcode]) {
-            case R: {
-                // Decode
-                cpu.instFields.rd     = GET_RD(cpu.IF);
-                cpu.instFields.rs1    = GET_RS1(cpu.IF);
-                cpu.instFields.rs2    = GET_RS2(cpu.IF);
-                cpu.instFields.funct3 = GET_FUNCT3(cpu.IF);
-                cpu.instFields.funct7 = GET_FUNCT7(cpu.IF);
-                cpu.ID = (cpu.instFields.funct7 << 10) | (cpu.instFields.funct3 << 7) | cpu.instFields.opcode;
-                if (cpu.opts.o_tracePrintEnable) {
-                    fprintf(stderr, "[rISA]: %08x:  0x%08x  <%-d cycles>\n", 
-                        cpu.pc, cpu.virtMem[cpu.pc/4], cpu.cycleCounter);
-                }
-                // Execute
-                switch ((RtypeInstructions)cpu.ID) {
-                    case SLLI: { // Shift left logical by immediate (i.e. rs2 is shamt)
-                        cpu.regFile[cpu.instFields.rd] = cpu.regFile[cpu.instFields.rs1] << cpu.instFields.rs2;
-                        break;
-                    }
-                    case SRLI: { // Shift right logical by immediate (i.e. rs2 is shamt)
-                        cpu.regFile[cpu.instFields.rd] = cpu.regFile[cpu.instFields.rs1] >> cpu.instFields.rs2;
-                        break;
-                    }
-                    case SRAI: { // Shift right arithmetic by immediate (i.e. rs2 is shamt)
-                        cpu.regFile[cpu.instFields.rd] = 
-                            (u32)((s32)cpu.regFile[cpu.instFields.rs1] >> cpu.instFields.rs2);
-                        break;
-                    }
-                    case ADD:  { // Addition
-                        cpu.regFile[cpu.instFields.rd] = 
-                            cpu.regFile[cpu.instFields.rs1] + cpu.regFile[cpu.instFields.rs2];
-                        break;
-                    }
-                    case SUB:  { // Subtraction
-                        cpu.regFile[cpu.instFields.rd] = 
-                            cpu.regFile[cpu.instFields.rs1] - cpu.regFile[cpu.instFields.rs2];
-                        break;
-                    }
-                    case SLL:  { // Shift left logical
-                        cpu.regFile[cpu.instFields.rd] = 
-                            cpu.regFile[cpu.instFields.rs1] << cpu.regFile[cpu.instFields.rs2];
-                        break;
-                    }
-                    case SLT:  { // Set if less than (signed)
-                        cpu.regFile[cpu.instFields.rd] = 
-                            ((s32)cpu.regFile[cpu.instFields.rs1] < (s32)cpu.regFile[cpu.instFields.rs2]) ? 1 : 0;
-                        break;
-                    }
-                    case SLTU: { // Set if less than (unsigned)
-                        cpu.regFile[cpu.instFields.rd] = 
-                            (cpu.regFile[cpu.instFields.rs1] < cpu.regFile[cpu.instFields.rs2]) ? 1 : 0;
-                        break;
-                    }
-                    case XOR:  { // Bitwise xor
-                        cpu.regFile[cpu.instFields.rd] = 
-                            cpu.regFile[cpu.instFields.rs1] ^ cpu.regFile[cpu.instFields.rs2];
-                        break;
-                    }
-                    case SRL:  { // Shift right logical
-                        cpu.regFile[cpu.instFields.rd] = 
-                            cpu.regFile[cpu.instFields.rs1] >> cpu.regFile[cpu.instFields.rs2];
-                        break;
-                    }
-                    case SRA:  { // Shift right arithmetic
-                        cpu.regFile[cpu.instFields.rd] = 
-                            (u32)((s32)cpu.regFile[cpu.instFields.rs1] >> cpu.regFile[cpu.instFields.rs2]);
-                        break;
-                    }
-                    case OR:   { // Bitwise or
-                        cpu.regFile[cpu.instFields.rd] = 
-                            cpu.regFile[cpu.instFields.rs1] | cpu.regFile[cpu.instFields.rs2];
-                        break;
-                    }
-                    case AND:  { // Bitwise and
-                        cpu.regFile[cpu.instFields.rd] = 
-                            cpu.regFile[cpu.instFields.rs1] & cpu.regFile[cpu.instFields.rs2];
-                        break;
-                    }
-                }
-                break;
-            }
-            case I: {
-                // Decode
-                cpu.instFields.rd     = GET_RD(cpu.IF);
-                cpu.instFields.rs1    = GET_RS1(cpu.IF);
-                cpu.instFields.funct3 = GET_FUNCT3(cpu.IF);
-                cpu.immFields.imm11_0 = GET_IMM_11_0(cpu.IF);
-                cpu.immFields.succ    = GET_SUCC(cpu.IF);
-                cpu.immFields.pred    = GET_PRED(cpu.IF);
-                cpu.immFields.fm      = GET_FM(cpu.IF);
-                cpu.immFinal = (((s32)cpu.immFields.imm11_0 << 20) >> 20);
-                cpu.ID = (cpu.instFields.funct3 << 7) | cpu.instFields.opcode;
-                cpu.targetAddress = cpu.regFile[cpu.instFields.rs1] + cpu.immFinal;
-                if (cpu.opts.o_tracePrintEnable) {
-                    fprintf(stderr, "[rISA]: %08x:  0x%08x  <%-d cycles>\n", 
-                        cpu.pc, cpu.virtMem[cpu.pc/4], cpu.cycleCounter);
-                }
-                // Execute
-                switch ((ItypeInstructions)cpu.ID) {
-                    case JALR:  { // Jump and link register
-                        cpu.regFile[cpu.instFields.rd] = cpu.pc + 4;
-                        cpu.pc = ((cpu.targetAddress) & 0xfffe) - 4;
-                        break;
-                    }
-                    case LB:    { // Load byte (signed)
-                        u32 loadByte = (u32)ACCESS_MEM_B(cpu.virtMem, cpu.targetAddress);
-                        cpu.regFile[cpu.instFields.rd] = (u32)((s32)(loadByte << 24) >> 24);
-                        break;
-                    }
-                    case LH:    { // Load halfword (signed)
-                        u32 loadHalfword = (u32)ACCESS_MEM_H(cpu.virtMem, cpu.targetAddress);
-                        cpu.regFile[cpu.instFields.rd] = (u32)((s32)(loadHalfword << 16) >> 16);
-                        break;
-                    }
-                    case LW:    { // Load word
-                        cpu.regFile[cpu.instFields.rd] = 
-                            ACCESS_MEM_W(cpu.virtMem, cpu.targetAddress);
-                        break;
-                    }
-                    case LBU:   { // Load byte (unsigned)
-                        cpu.regFile[cpu.instFields.rd] = 
-                            (u32)ACCESS_MEM_B(cpu.virtMem, cpu.targetAddress);
-                        break;
-                    }
-                    case LHU:   { // Load halfword (unsigned)
-                        cpu.regFile[cpu.instFields.rd] = 
-                            (u32)ACCESS_MEM_H(cpu.virtMem, cpu.targetAddress);
-                        break;
-                    }
-                    case ADDI:  { // Add immediate
-                        cpu.regFile[cpu.instFields.rd] = cpu.targetAddress;
-                        break;
-                    }
-                    case SLTI:  { // Set if less than immediate (signed)
-                        cpu.regFile[cpu.instFields.rd] = 
-                            ((s32)cpu.regFile[cpu.instFields.rs1] < cpu.immFinal) ? 1 : 0;
-                        break;
-                    }
-                    case SLTIU: { // Set if less than immediate (unsigned)
-                        cpu.regFile[cpu.instFields.rd] = 
-                            (cpu.regFile[cpu.instFields.rs1] < (u32)cpu.immFinal) ? 1 : 0;
-                        break;
-                    }
-                    case XORI:  { // Bitwise exclusive or immediate
-                        cpu.regFile[cpu.instFields.rd] = cpu.regFile[cpu.instFields.rs1] ^ cpu.immFinal;
-                        break;
-                    }
-                    case ORI:   { // Bitwise or immediate
-                        cpu.regFile[cpu.instFields.rd] = cpu.regFile[cpu.instFields.rs1] | cpu.immFinal;
-                        break;
-                    }
-                    case ANDI:  { // Bitwise and immediate
-                        cpu.regFile[cpu.instFields.rd] = cpu.regFile[cpu.instFields.rs1] & cpu.immFinal;
-                        break;
-                    }
-                    case FENCE: { // FENCE - order device I/O and memory accesses
-                        cpu.pfnEnvHandler(&cpu);
-                        break;
-                    }
-                    // Catch environment-type instructions
-                    default: {
-                        cpu.ID = (cpu.immFields.imm11_0 << 20) | (cpu.instFields.funct3 << 7) | cpu.instFields.opcode;
-                        switch ((ItypeInstructions)cpu.ID) {
-                            case ECALL: { // ECALL - request a syscall
-                                break;
-                            }
-                            case EBREAK: { // EBREAK - halt processor execution, transfer control to debugger
-                                break;
-                            }
-                        }
-                        cpu.pfnEnvHandler(&cpu);
-                    }
-                }
-                break;
-            }
-            case S: {
-                // Decode
-                cpu.instFields.funct3 = GET_FUNCT3(cpu.IF);
-                cpu.immFields.imm4_0  = GET_IMM_4_0(cpu.IF);
-                cpu.instFields.rs1    = GET_RS1(cpu.IF);
-                cpu.instFields.rs2    = GET_RS2(cpu.IF);
-                cpu.immFields.imm11_5 = GET_IMM_11_5(cpu.IF);
-                cpu.immPartial = cpu.immFields.imm4_0 | (cpu.immFields.imm11_5 << 5);
-                cpu.immFinal = (((s32)cpu.immPartial << 20) >> 20);
-                cpu.ID = (cpu.instFields.funct3 << 7) | cpu.instFields.opcode;
-                cpu.targetAddress = cpu.regFile[cpu.instFields.rs1] + cpu.immFinal;
-                if (cpu.opts.o_tracePrintEnable) {
-                    fprintf(stderr, "[rISA]: %08x:  0x%08x  <%-d cycles>\n", 
-                        cpu.pc, cpu.virtMem[cpu.pc/4], cpu.cycleCounter);
-                }
-                // Execute
-                switch ((StypeInstructions)cpu.ID) {
-                    case SB: { // Store byte
-                        ACCESS_MEM_B(cpu.virtMem, cpu.targetAddress) =
-                            (u8)cpu.regFile[cpu.instFields.rs2];
-                        break;
-                    }
-                    case SH: { // Store halfword
-                        ACCESS_MEM_H(cpu.virtMem, cpu.targetAddress) =
-                            (u16)cpu.regFile[cpu.instFields.rs2];
-                        break;
-                    }
-                    case SW: { // Store word
-                        ACCESS_MEM_W(cpu.virtMem, cpu.targetAddress) =
-                            cpu.regFile[cpu.instFields.rs2];
-                        break;
-                    }
-                }
-                cpu.pfnMmioHandler(&cpu);
-                break;
-            }
-            case B: {
-                // Decode
-                cpu.instFields.rs1    = GET_RS1(cpu.IF);
-                cpu.instFields.rs2    = GET_RS2(cpu.IF);
-                cpu.instFields.funct3 = GET_FUNCT3(cpu.IF);
-                cpu.immFields.imm11   = GET_IMM_11_B(cpu.IF);
-                cpu.immFields.imm4_1  = GET_IMM_4_1(cpu.IF);
-                cpu.immFields.imm10_5 = GET_IMM_10_5(cpu.IF);
-                cpu.immFields.imm12   = GET_IMM_12(cpu.IF);
-                cpu.immPartial = cpu.immFields.imm11 | (cpu.immFields.imm4_1 << 1) | 
-                    (cpu.immFields.imm10_5 << 5) | (cpu.immFields.imm12 << 11);
-                cpu.targetAddress = (s32)(cpu.immPartial << 20) >> 19;
-                cpu.ID = (cpu.instFields.funct3 << 7) | cpu.instFields.opcode;
-                if (cpu.opts.o_tracePrintEnable) {
-                    fprintf(stderr, "[rISA]: %08x:  0x%08x  <%-d cycles>\n", 
-                        cpu.pc, cpu.virtMem[cpu.pc/4], cpu.cycleCounter);
-                }
-                // Execute
-                switch ((BtypeInstructions)cpu.ID) {
-                    case BEQ:  { // Branch if Equal
-                        if ((s32)cpu.regFile[cpu.instFields.rs1] == (s32)cpu.regFile[cpu.instFields.rs2]) {
-                            cpu.pc += cpu.targetAddress - 4;
-                        }
-                        break;
-                    }
-                    case BNE:  { // Branch if Not Equal
-                        if ((s32)cpu.regFile[cpu.instFields.rs1] != (s32)cpu.regFile[cpu.instFields.rs2]) {
-                            cpu.pc += cpu.targetAddress - 4;
-                        }
-                        break;
-                    }
-                    case BLT:  { // Branch if Less Than
-                        if ((s32)cpu.regFile[cpu.instFields.rs1] < (s32)cpu.regFile[cpu.instFields.rs2]) {
-                            cpu.pc += cpu.targetAddress - 4;
-                        }
-                        break;
-                    }
-                    case BGE:  { // Branch if Greater Than or Equal
-                        if ((s32)cpu.regFile[cpu.instFields.rs1] >= (s32)cpu.regFile[cpu.instFields.rs2]) {
-                            cpu.pc += cpu.targetAddress - 4;
-                        }
-                        break;
-                    }
-                    case BLTU: { // Branch if Less Than (unsigned)
-                        if (cpu.regFile[cpu.instFields.rs1] < cpu.regFile[cpu.instFields.rs2]) {
-                            cpu.pc += cpu.targetAddress - 4;
-                        }
-                        break;
-                    }
-                    case BGEU: { // Branch if Greater Than or Equal (unsigned)
-                        if (cpu.regFile[cpu.instFields.rs1] >= cpu.regFile[cpu.instFields.rs2]) {
-                            cpu.pc += cpu.targetAddress - 4;
-                        }
-                        break;
-                    }
-                }
-                break;
-            }
-            case U: {
-                // Decode
-                cpu.instFields.rd      = GET_RD(cpu.IF);
-                cpu.immFields.imm31_12 = GET_IMM_31_12(cpu.IF);
-                cpu.immFinal = cpu.immFields.imm31_12 << 12;
-                if (cpu.opts.o_tracePrintEnable) {
-                    fprintf(stderr, "[rISA]: %08x:  0x%08x  <%-d cycles>\n", 
-                        cpu.pc, cpu.virtMem[cpu.pc/4], cpu.cycleCounter);
-                }
-                // Execute
-                switch ((UtypeInstructions)cpu.instFields.opcode) {
-                    case LUI:   { // Load Upper Immediate
-                        cpu.regFile[cpu.instFields.rd] = cpu.immFinal;
-                        break;
-                    }
-                    case AUIPC: { // Add Upper Immediate to cpu.pc
-                        cpu.regFile[cpu.instFields.rd] = cpu.pc + cpu.immFinal;
-                        break;
-                    }
-                }
-                break;
-            }
-            case J: {
-                // Decode
-                cpu.instFields.rd      = GET_RD(cpu.IF);
-                cpu.immFields.imm19_12 = GET_IMM_19_12(cpu.IF);
-                cpu.immFields.imm11    = GET_IMM_11_J(cpu.IF);
-                cpu.immFields.imm10_1  = GET_IMM_10_1(cpu.IF);
-                cpu.immFields.imm20    = GET_IMM_20(cpu.IF);
-                cpu.immPartial = cpu.immFields.imm10_1 | (cpu.immFields.imm11 << 10) | 
-                    (cpu.immFields.imm19_12 << 11) | (cpu.immFields.imm20 << 19);
-                cpu.targetAddress = (s32)(cpu.immPartial << 12) >> 11;
-                if (cpu.opts.o_tracePrintEnable) {
-                    fprintf(stderr, "[rISA]: %08x:  0x%08x  <%-d cycles>\n", 
-                        cpu.pc, cpu.virtMem[cpu.pc/4], cpu.cycleCounter);
-                }
-                // Execute
-                switch ((JtypeInstructions)(cpu.instFields.opcode)) {
-                    case JAL: { // Jump and link
-                        cpu.regFile[cpu.instFields.rd] = cpu.pc + 4;
-                        cpu.pc += cpu.targetAddress - 4;
-                        break;
-                    }
-                }
-                break;
-            }
-            default: { // Invalid instruction
-                printf("[rISA]: Error - (0x%08x) is an invalid instruction.\n", cpu.IF);
-                cpu.endTime = clock();
-                cleanupSimulator(&cpu, EILSEQ);
-            }
-        }
-        cpu.cycleCounter++;
-        cpu.pc += 4;
-        if (g_sigIntDet) { // Normal exit/cleanup
-            cpu.endTime = clock();
-            cleanupSimulator(&cpu, 0);
-        }
-        if (cpu.pc > cpu.virtMemRange) {
-            printf("[rISA]: Error. Program counter is out of range.\n");
-            cpu.endTime = clock();
-            cleanupSimulator(&cpu, EFAULT);
-        }
-        if ((cpu.cycleCounter % cpu.intPeriodVal) == 0) {
-            cpu.pfnIntHandler(&cpu);
-        }
-        cpu.regFile[0] = 0;
-    }
-    return 0;
-}
+const InstFormats OpcodeToFormat[128] = {
+    /* 0b0000000 */ Undefined,
+    /* 0b0000001 */ Undefined,
+    /* 0b0000010 */ Undefined,
+    /* 0b0000011 */ I,
+    /* 0b0000100 */ Undefined,
+    /* 0b0000101 */ Undefined,
+    /* 0b0000110 */ Undefined,
+    /* 0b0000111 */ Undefined,
+    /* 0b0001000 */ Undefined,
+    /* 0b0001001 */ Undefined,
+    /* 0b0001010 */ Undefined,
+    /* 0b0001011 */ Undefined,
+    /* 0b0001100 */ Undefined,
+    /* 0b0001101 */ Undefined,
+    /* 0b0001110 */ Undefined,
+    /* 0b0001111 */ I,
+    /* 0b0010000 */ Undefined,
+    /* 0b0010001 */ Undefined,
+    /* 0b0010010 */ Undefined,
+    /* 0b0010011 */ I,
+    /* 0b0010100 */ Undefined,
+    /* 0b0010101 */ Undefined,
+    /* 0b0010110 */ Undefined,
+    /* 0b0010111 */ U,
+    /* 0b0011000 */ Undefined,
+    /* 0b0011001 */ Undefined,
+    /* 0b0011010 */ Undefined,
+    /* 0b0011011 */ Undefined,
+    /* 0b0011100 */ Undefined,
+    /* 0b0011101 */ Undefined,
+    /* 0b0011110 */ Undefined,
+    /* 0b0011111 */ Undefined,
+    /* 0b0100000 */ Undefined,
+    /* 0b0100001 */ Undefined,
+    /* 0b0100010 */ Undefined,
+    /* 0b0100011 */ S,
+    /* 0b0100100 */ Undefined,
+    /* 0b0100101 */ Undefined,
+    /* 0b0100110 */ Undefined,
+    /* 0b0100111 */ Undefined,
+    /* 0b0101000 */ Undefined,
+    /* 0b0101001 */ Undefined,
+    /* 0b0101010 */ Undefined,
+    /* 0b0101011 */ Undefined,
+    /* 0b0101100 */ Undefined,
+    /* 0b0101101 */ Undefined,
+    /* 0b0101110 */ Undefined,
+    /* 0b0101111 */ Undefined,
+    /* 0b0110000 */ Undefined,
+    /* 0b0110001 */ Undefined,
+    /* 0b0110010 */ Undefined,
+    /* 0b0110011 */ R,
+    /* 0b0110100 */ Undefined,
+    /* 0b0110101 */ Undefined,
+    /* 0b0110110 */ Undefined,
+    /* 0b0110111 */ U,
+    /* 0b0111000 */ Undefined,
+    /* 0b0111001 */ Undefined,
+    /* 0b0111010 */ Undefined,
+    /* 0b0111011 */ Undefined,
+    /* 0b0111100 */ Undefined,
+    /* 0b0111101 */ Undefined,
+    /* 0b0111110 */ Undefined,
+    /* 0b0111111 */ Undefined,
+    /* 0b1000000 */ Undefined,
+    /* 0b1000001 */ Undefined,
+    /* 0b1000010 */ Undefined,
+    /* 0b1000011 */ Undefined,
+    /* 0b1000100 */ Undefined,
+    /* 0b1000101 */ Undefined,
+    /* 0b1000110 */ Undefined,
+    /* 0b1000111 */ Undefined,
+    /* 0b1001000 */ Undefined,
+    /* 0b1001001 */ Undefined,
+    /* 0b1001010 */ Undefined,
+    /* 0b1001011 */ Undefined,
+    /* 0b1001100 */ Undefined,
+    /* 0b1001101 */ Undefined,
+    /* 0b1001110 */ Undefined,
+    /* 0b1001111 */ Undefined,
+    /* 0b1010000 */ Undefined,
+    /* 0b1010001 */ Undefined,
+    /* 0b1010010 */ Undefined,
+    /* 0b1010011 */ Undefined,
+    /* 0b1010100 */ Undefined,
+    /* 0b1010101 */ Undefined,
+    /* 0b1010110 */ Undefined,
+    /* 0b1010111 */ Undefined,
+    /* 0b1011000 */ Undefined,
+    /* 0b1011001 */ Undefined,
+    /* 0b1011010 */ Undefined,
+    /* 0b1011011 */ Undefined,
+    /* 0b1011100 */ Undefined,
+    /* 0b1011101 */ Undefined,
+    /* 0b1011110 */ Undefined,
+    /* 0b1011111 */ Undefined,
+    /* 0b1100000 */ Undefined,
+    /* 0b1100001 */ Undefined,
+    /* 0b1100010 */ Undefined,
+    /* 0b1100011 */ B,
+    /* 0b1100100 */ Undefined,
+    /* 0b1100101 */ Undefined,
+    /* 0b1100110 */ Undefined,
+    /* 0b1100111 */ J,
+    /* 0b1101000 */ Undefined,
+    /* 0b1101001 */ Undefined,
+    /* 0b1101010 */ Undefined,
+    /* 0b1101011 */ Undefined,
+    /* 0b1101100 */ Undefined,
+    /* 0b1101101 */ Undefined,
+    /* 0b1101110 */ Undefined,
+    /* 0b1101111 */ J,
+    /* 0b1110000 */ Undefined,
+    /* 0b1110001 */ Undefined,
+    /* 0b1110010 */ Undefined,
+    /* 0b1110011 */ I,
+    /* 0b1110100 */ Undefined,
+    /* 0b1110101 */ Undefined,
+    /* 0b1110110 */ Undefined,
+    /* 0b1110111 */ Undefined,
+    /* 0b1111000 */ Undefined,
+    /* 0b1111001 */ Undefined,
+    /* 0b1111010 */ Undefined,
+    /* 0b1111011 */ Undefined,
+    /* 0b1111100 */ Undefined,
+    /* 0b1111101 */ Undefined,
+    /* 0b1111110 */ Undefined,
+    /* 0b1111111 */ Undefined
+};

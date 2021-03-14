@@ -7,6 +7,7 @@ set(TEST_PROG_DIR ${CMAKE_SOURCE_DIR}/examples/test_program)
 
 add_executable(risa 
     ${RISA_DIR}/risa.c
+    ${RISA_DIR}/risa_core.c
 )
 target_link_libraries(
     risa

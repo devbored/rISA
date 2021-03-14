@@ -2,7 +2,8 @@ cmake_minimum_required(VERSION 3.10)
 
 project(risa)
 set(RISA_DIR ${CMAKE_SOURCE_DIR}/risa)
-set(EXAMPLE_HANDLER_DIR ${CMAKE_SOURCE_DIR}/example_handlers)
+set(TEST_HANDLER_DIR ${CMAKE_SOURCE_DIR}/examples/test_handler)
+set(TEST_PROG_DIR ${CMAKE_SOURCE_DIR}/examples/test_program)
 
 add_executable(risa 
     ${RISA_DIR}/risa.c
@@ -16,13 +17,11 @@ set_property(
     PROPERTY C_STANDARD 99
 )
 
-add_library(example_handlers SHARED 
-    ${EXAMPLE_HANDLER_DIR}/example_handlers.c
-)
-target_include_directories(example_handlers PUBLIC
-    ${RISA_DIR}
-)
-set_property(
-    TARGET example_handlers
-    PROPERTY C_STANDARD 99
+add_subdirectory(${CMAKE_SOURCE_DIR}/examples/test_handler)
+
+# Example RISC-V asm program uses separate cross-compiler
+# (Needs to run as separate CMake command due to this)
+add_custom_target(TEST_PROG ALL
+    COMMAND cmake ${TEST_PROG_DIR} -B${CMAKE_BINARY_DIR}/examples/test_program -G ${CMAKE_GENERATOR}
+    COMMAND cmake --build ${CMAKE_BINARY_DIR}/examples/test_program
 )

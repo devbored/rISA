@@ -7,7 +7,6 @@ A simple RISC-V ISA Simulator.
     - MMIO handler
     - Environment handler (i.e. FENCE, ECALL and EBREAK)
     - Interrupt handler
-- Simple implementation (under 1000 LOC)
 
 ## Dependencies
 - CMake (v3.10 or higher)

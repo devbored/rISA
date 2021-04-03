@@ -76,6 +76,59 @@ typedef int32_t s32;
 #define GET_PRED(instr)             GET_BITS(instr, 24, 4)
 #define GET_FM(instr)               GET_BITS(instr, 28, 4)
 
+// Tracing macro with Register type syntax
+#define TRACE_R(cpu, name) do { if (cpu->opts.o_tracePrintEnable) {                                             \
+    fprintf(stderr, "[rISA]: <%-d cycles> : %08x:  0x%08x    %s x%d, x%d, x%d\n",                               \
+        cpu->cycleCounter, cpu->pc, cpu->virtMem[cpu->pc/4], name, cpu->instFields.rd, cpu->instFields.rs1,     \
+            cpu->instFields.rs2); } } while(0)
+
+// Tracing macro with Immediate type syntax
+#define TRACE_I(cpu, name) do { if (cpu->opts.o_tracePrintEnable) {                                             \
+    fprintf(stderr, "[rISA]: <%-d cycles> : %08x:  0x%08x    %s x%d, x%d, %d\n",                                \
+        cpu->cycleCounter, cpu->pc, cpu->virtMem[cpu->pc/4], name, cpu->instFields.rd, cpu->instFields.rs1,     \
+            cpu->immFinal); } } while(0)
+
+// Tracing macro with Load type syntax
+#define TRACE_L(cpu, name) do { if (cpu->opts.o_tracePrintEnable) {                                             \
+    fprintf(stderr, "[rISA]: <%-d cycles> : %08x:  0x%08x    %s x%d, %d(x%d)\n",                                \
+        cpu->cycleCounter, cpu->pc, cpu->virtMem[cpu->pc/4], name, cpu->instFields.rd, cpu->immFinal,           \
+            cpu->instFields.rs1); } } while(0)
+
+// Tracing macro with Store type syntax
+#define TRACE_S(cpu, name) do { if (cpu->opts.o_tracePrintEnable) {                                             \
+    fprintf(stderr, "[rISA]: <%-d cycles> : %08x:  0x%08x    %s x%d, %d(x%d)\n",                                \
+        cpu->cycleCounter, cpu->pc, cpu->virtMem[cpu->pc/4], name, cpu->instFields.rs2, cpu->immFinal,          \
+            cpu->instFields.rs1); } } while(0)
+
+// Tracing macro with Upper type syntax
+#define TRACE_U(cpu, name) do { if (cpu->opts.o_tracePrintEnable) {                                             \
+    fprintf(stderr, "[rISA]: <%-d cycles> : %08x:  0x%08x    %s x%d, 0x%08x\n",                                 \
+        cpu->cycleCounter, cpu->pc, cpu->virtMem[cpu->pc/4], name, cpu->instFields.rd,                          \
+            cpu->immFinal); } } while(0)
+
+// Tracing macro with Jump type syntax
+#define TRACE_J(cpu, name) do { if (cpu->opts.o_tracePrintEnable) {                                             \
+    fprintf(stderr, "[rISA]: <%-d cycles> : %08x:  0x%08x    %s x%d, %d\n",                                     \
+        cpu->cycleCounter, cpu->pc, cpu->virtMem[cpu->pc/4], name, cpu->instFields.rd,                          \
+            cpu->targetAddress); } } while(0)
+
+// Tracing macro with Branch type syntax
+#define TRACE_B(cpu, name) do { if (cpu->opts.o_tracePrintEnable) {                                             \
+    fprintf(stderr, "[rISA]: <%-d cycles> : %08x:  0x%08x    %s x%d, x%d, 0x%x\n",                              \
+        cpu->cycleCounter, cpu->pc, cpu->virtMem[cpu->pc/4], name, cpu->instFields.rs1, cpu->instFields.rs2,    \
+            cpu->targetAddress); } } while(0)
+
+// Tracing macro for FENCE
+#define TRACE_FEN(cpu, name) do { if (cpu->opts.o_tracePrintEnable) {                                           \
+    fprintf(stderr, "[rISA]: <%-d cycles> : %08x:  0x%08x    %s fm:%d, pred:%d, succ:%d\n",                     \
+        cpu->cycleCounter, cpu->pc, cpu->virtMem[cpu->pc/4], name, cpu->immFields.fm, cpu->immFields.pred,      \
+            cpu->immFields.succ); } } while(0)
+
+// Tracing macro for Environment type syntax
+#define TRACE_E(cpu, name) do { if (cpu->opts.o_tracePrintEnable) {                                             \
+    fprintf(stderr, "[rISA]: <%-d cycles> : %08x:  0x%08x    %s\n",                                             \
+        cpu->cycleCounter, cpu->pc, cpu->virtMem[cpu->pc/4], name); } } while(0)
+
 typedef struct {
     u32 imm11_0  : 12;
     u32 imm4_0   : 5;
@@ -122,21 +175,20 @@ typedef struct rv32iHart{
     u32                 targetAddress;
     u32                 cycleCounter;
     u32                 *virtMem;
-    u32                 virtMemRange;
+    u32                 virtMemSize;
     u32                 intPeriodVal;
-    u64                 timeoutVal;
     clock_t             startTime;
     clock_t             endTime;
     double              timeDelta;
     LIB_HANDLE          handlerLib;
-    void (*pfnMmioHandler)(struct rv32iHart *cpu);
     void                *mmioData;
-    void (*pfnIntHandler)(struct rv32iHart *cpu);
-    void                *intData;
-    void (*pfnEnvHandler)(struct rv32iHart *cpu);
     void                *envData;
-    void (*pfnInitHandler)(struct rv32iHart *cpu);
-    void (*pfnExitHandler)(struct rv32iHart *cpu);
+    void                *intData;
+    void (*pfnMmioHandler)  (struct rv32iHart *cpu);
+    void (*pfnIntHandler)   (struct rv32iHart *cpu);
+    void (*pfnEnvHandler)   (struct rv32iHart *cpu);
+    void (*pfnInitHandler)  (struct rv32iHart *cpu);
+    void (*pfnExitHandler)  (struct rv32iHart *cpu);
     optFlags            opts;
 } rv32iHart;
 

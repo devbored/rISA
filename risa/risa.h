@@ -1,3 +1,16 @@
+#ifndef RISA_H
+#define RISA_H
+
+#include <stdint.h>
+#include <errno.h>
+#include <stdio.h>
+#include <time.h>
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <dlfcn.h>
+#endif
+
 typedef uint8_t  u8;
 typedef uint16_t u16;
 typedef uint32_t u32;
@@ -161,7 +174,21 @@ typedef struct {
     u32 o_definedHandles    : 1;
     u32 o_timeout           : 1;
     u32 o_intPeriod         : 1;
+    u32 o_gdbEnabled        : 1;
 } optFlags;
+
+typedef struct {
+    u32 dbgContinue : 1;
+    u32 dbgStep     : 1;
+    u32 dbgHalt     : 1;
+} GdbFlags;
+
+typedef struct {
+    u16         serverPort;
+    int         socketFd;
+    int         connectFd;
+    GdbFlags    gdbFlags;
+} GdbFields;
 
 typedef struct rv32iHart{
     u32                 pc;
@@ -179,17 +206,15 @@ typedef struct rv32iHart{
     u32                 intPeriodVal;
     clock_t             startTime;
     clock_t             endTime;
-    double              timeDelta;
     LIB_HANDLE          handlerLib;
-    void                *mmioData;
-    void                *envData;
-    void                *intData;
+    void                *handlerData;
+    optFlags            opts;
+    GdbFields           gdbFields;
     void (*pfnMmioHandler)  (struct rv32iHart *cpu);
     void (*pfnIntHandler)   (struct rv32iHart *cpu);
     void (*pfnEnvHandler)   (struct rv32iHart *cpu);
     void (*pfnInitHandler)  (struct rv32iHart *cpu);
     void (*pfnExitHandler)  (struct rv32iHart *cpu);
-    optFlags            opts;
 } rv32iHart;
 
 typedef void (*pfnMmioHandler)(rv32iHart *cpu);
@@ -204,7 +229,8 @@ typedef enum {
     OPT_HELP            = (1<<2),
     OPT_TRACING         = (1<<3),
     OPT_INTERRUPT       = (1<<4),
-    OPT_UNKNOWN         = (1<<5),
+    OPT_GDB             = (1<<5),
+    OPT_UNKNOWN         = (1<<6),
     VALUE_OPTS          = (OPT_VIRT_MEM_SIZE | OPT_HANDLER_LIB | OPT_INTERRUPT)
 } SimulatorOptions;
 
@@ -290,3 +316,5 @@ SimulatorOptions isOption(const char *arg);
 void processOptions(int argc, char** argv, rv32iHart *cpu);
 void loadProgram(int argc, char **argv, rv32iHart *cpu);
 void setupSimulator(int argc, char **argv, rv32iHart *cpu);
+
+#endif // RISA_H

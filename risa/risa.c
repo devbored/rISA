@@ -1,17 +1,8 @@
-#include <stdint.h>
-#include <stdlib.h>
-#include <limits.h>
-#include <string.h>
-#include <signal.h>
-#include <errno.h>
 #include <stdio.h>
-#include <time.h>
-#ifdef _WIN32
-#include <windows.h>
-#else
-#include <dlfcn.h>
-#endif
+#include <stdlib.h>
+#include <string.h>
 #include "risa.h"
+#include "gdbstub_sys.h"
 
 void stubMmioHandler(rv32iHart *cpu)  { return; }
 void stubIntHandler(rv32iHart *cpu)   { return; }
@@ -26,26 +17,24 @@ void printHelp(void) {
         "\n\n"
         "           OPTIONS:\n"
         "               -m <uint> : Virtual memory/IO size (in bytes).\n"
-        "               -l <file> : Dynamic library file to user-defined handler functions.\n"
+        "               -l <file> : Dynamic library '.so/.dll' file to user-defined handler functions.\n"
         "               -t        : Enable trace printing to stderr.\n"
         "               -i <uint> : Simulator interrupt-check timeout value [DEFAULT=500].\n"
+        "               -gdb      : Run the simulator in GDB-mode.\n"
         "               -h        : Print help and exit.\n"
         "\n"
     );
 }
 
 void cleanupSimulator(rv32iHart *cpu, int err) {
-    if (cpu->pfnExitHandler != NULL) { cpu->pfnExitHandler(cpu);    }
-    if (cpu->virtMem != NULL)        { free(cpu->virtMem);          }
-    if (cpu->mmioData != NULL)       { free(cpu->mmioData);         }
-    if (cpu->intData != NULL)        { free(cpu->intData);          }
-    if (cpu->envData != NULL)        { free(cpu->envData);          }
-    if (cpu->handlerLib != NULL)     { CLOSE_LIB(cpu->handlerLib);  }
-    cpu->timeDelta = ((double)(cpu->endTime - cpu->startTime)) / CLOCKS_PER_SEC;
+    if (cpu->pfnExitHandler != NULL)    { cpu->pfnExitHandler(cpu);    }
+    if (cpu->virtMem        != NULL)    { free(cpu->virtMem);          }
+    if (cpu->handlerData    != NULL)    { free(cpu->handlerData);      }
+    if (cpu->handlerLib     != NULL)    { CLOSE_LIB(cpu->handlerLib);  }
     printf(
         "[rISA]: Simulator stopping.\n"
         "        Simulation time elapsed: (%f seconds).\n",
-        cpu->timeDelta
+        ((double)(cpu->endTime - cpu->startTime)) / CLOCKS_PER_SEC
     );
     switch (err) {
         case ENOMEM:    exit(ENOMEM);
@@ -59,12 +48,13 @@ void cleanupSimulator(rv32iHart *cpu, int err) {
 }
 
 SimulatorOptions isOption(const char *arg) {
-    if      (strcmp(arg, "-m") == 0)    { return OPT_VIRT_MEM_SIZE; }
-    else if (strcmp(arg, "-l") == 0)    { return OPT_HANDLER_LIB;   }
-    else if (strcmp(arg, "-h") == 0)    { return OPT_HELP;          }
-    else if (strcmp(arg, "-t") == 0)    { return OPT_TRACING;       }
-    else if (strcmp(arg, "-i") == 0)    { return OPT_INTERRUPT;     }
-    else                                { return OPT_UNKNOWN;       }
+    if      (strcmp(arg, "-m")      == 0)   { return OPT_VIRT_MEM_SIZE; }
+    else if (strcmp(arg, "-l")      == 0)   { return OPT_HANDLER_LIB;   }
+    else if (strcmp(arg, "-h")      == 0)   { return OPT_HELP;          }
+    else if (strcmp(arg, "-t")      == 0)   { return OPT_TRACING;       }
+    else if (strcmp(arg, "-i")      == 0)   { return OPT_INTERRUPT;     }
+    else if (strcmp(arg, "-gdb")    == 0)   { return OPT_GDB;           }
+    else                                    { return OPT_UNKNOWN;       }
 }
 
 void processOptions(int argc, char **argv, rv32iHart *cpu) {
@@ -80,7 +70,7 @@ void processOptions(int argc, char **argv, rv32iHart *cpu) {
             cleanupSimulator(cpu, EINVAL);
         }
         switch (isOption(argv[i])) {
-            case OPT_VIRT_MEM_SIZE: { // --- Attempt to allocate virtual memory ("-m") ---
+            case OPT_VIRT_MEM_SIZE: {
                 if (cpu->opts.o_virtMemSize) {
                     printf("[rISA]: ERROR - Ambiguous multiple '-m' options defined - specify only one.\n");
                     printHelp();
@@ -91,7 +81,7 @@ void processOptions(int argc, char **argv, rv32iHart *cpu) {
                 cpu->opts.o_virtMemSize = 1;
                 break;
             }
-            case OPT_HANDLER_LIB: { // --- Attempt to load user handlers ("-l") ---
+            case OPT_HANDLER_LIB: {
                 if (cpu->opts.o_definedHandles) {
                     printf("[rISA]: ERROR - Ambiguous multiple '-l' options defined (specify only one).\n");
                     printHelp();
@@ -112,13 +102,13 @@ void processOptions(int argc, char **argv, rv32iHart *cpu) {
                 cpu->opts.o_definedHandles = 1;
                 break;
             }
-            case OPT_HELP: // --- Print help menu ("-h") ---
+            case OPT_HELP:
                 printHelp();
                 cleanupSimulator(cpu, 0);
-            case OPT_TRACING: // --- Enable trace printing ("-t") ---
+            case OPT_TRACING:
                 cpu->opts.o_tracePrintEnable = 1;
                 break;
-            case OPT_INTERRUPT: { // --- Configure a simulator interrupt period value ("-i") ---
+            case OPT_INTERRUPT: {
                 if (cpu->opts.o_intPeriod) {
                     printf("[rISA]: ERROR - Ambiguous multiple '-i' options defined (specify only one).\n");
                     printHelp();
@@ -126,6 +116,10 @@ void processOptions(int argc, char **argv, rv32iHart *cpu) {
                 }
                 cpu->intPeriodVal = (u32)atoi(argv[i+1]);
                 cpu->opts.o_intPeriod = 1;
+                break;
+            }
+            case OPT_GDB: {
+                cpu->opts.o_gdbEnabled = 1;
                 break;
             }
             default: // --- Unknown value if prior arg was not a valid OPTION <value> ---
@@ -158,12 +152,13 @@ void loadProgram(int argc, char **argv, rv32iHart *cpu) {
             fclose(binFile);
             cleanupSimulator(cpu, ENOMEM);
         }
-        fread(cpu->virtMem+i, sizeof(u32), 1, binFile);
+        size_t ret = fread(cpu->virtMem+i, sizeof(u32), 1, binFile);
     }
     fclose(binFile);
 }
 
 void setupSimulator(int argc, char **argv, rv32iHart *cpu) {
+    printf("[rISA]: Starting simulator...\n\n");
     if (argc == 1) {
         printf("[rISA]: ERROR - No program specified.\n");
         printHelp();
@@ -202,6 +197,11 @@ void setupSimulator(int argc, char **argv, rv32iHart *cpu) {
         printf("[rISA]: INFO - Virtual memory size cannot be 0, using default value '%d' instead.\n",
             DEFAULT_VIRT_MEM_SIZE);
     }
+
+    if (cpu->opts.o_gdbEnabled) {
+        dbg_sys_start(cpu);
+    }
+
     cpu->virtMem = malloc(cpu->virtMemSize);
     if (cpu->virtMem == NULL) {
         printf("[rISA]: ERROR - Could not allocate virtual memory.\n");

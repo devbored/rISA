@@ -1,17 +1,8 @@
-#include <stdint.h>
-#include <stdlib.h>
-#include <limits.h>
-#include <string.h>
-#include <signal.h>
-#include <errno.h>
 #include <stdio.h>
 #include <time.h>
-#ifdef _WIN32
-#include <windows.h>
-#else
-#include <dlfcn.h>
-#endif
+#include <signal.h>
 #include "risa.h"
+#include "gdbstub_sys.h"
 
 static volatile int g_sigIntDet = 0;
 static SIGINT_RET_TYPE sigintHandler(SIGINT_PARAM sig) { 
@@ -26,6 +17,10 @@ int main(int argc, char** argv) {
     printf("[rISA]: Running simulator...\n\n");
     cpu.startTime = clock();
     for (;;) {
+        if (cpu.opts.o_gdbEnabled) {
+            dbg_sys_process();
+        }
+
         // Fetch
         cpu.IF = ACCESS_MEM_W(cpu.virtMem, cpu.pc);
         cpu.instFields.opcode = GET_OPCODE(cpu.IF);

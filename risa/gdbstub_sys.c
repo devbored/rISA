@@ -65,7 +65,7 @@ int dbg_sys_getc(void)
         size_t len = sizeof(packet);
         int err = readSocket(g_dbgHandle.cpuHandle->gdbFields.connectFd, &packet, len);
         
-        // TODO: Figure this out lol...
+        // TODO: Clean this up?
         return packet;
     }
 }

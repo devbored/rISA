@@ -72,7 +72,7 @@ int startServer(rv32iHart *cpu){
     return 0;
 }
 
-// TODO: Figure these out lol...
+// TODO: Clean this up?
 int readSocket(int clientSocket, char *packet, size_t len) {
     const int res = recv(clientSocket, packet, len, 0);
 

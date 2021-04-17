@@ -4,11 +4,11 @@
 #include "risa.h"
 #include "gdbstub_sys.h"
 
-void stubMmioHandler(rv32iHart *cpu)  { return; }
-void stubIntHandler(rv32iHart *cpu)   { return; }
-void stubEnvHandler(rv32iHart *cpu)   { return; }
-void stubInitHandler(rv32iHart *cpu)  { return; }
-void stubExitHandler(rv32iHart *cpu)  { return; }
+void defaultMmioHandler(rv32iHart *cpu)  { return; }
+void defaultIntHandler(rv32iHart *cpu)   { return; }
+void defaultEnvHandler(rv32iHart *cpu)   { return; }
+void defaultExitHandler(rv32iHart *cpu)  { return; }
+void defaultInitHandler(rv32iHart *cpu)  { return; }
 
 void printHelp(void) {
     printf(
@@ -91,7 +91,7 @@ void processOptions(int argc, char **argv, rv32iHart *cpu) {
                 if (cpu->handlerLib == NULL) {
                     printf(
                         "[rISA]: INFO - Could not load dynamic library <%s>.\n"
-                        "        Using default stub handlers instead.\n", argv[i+1]
+                        "        Using default default handlers instead.\n", argv[i+1]
                     );
                 }
                 cpu->pfnMmioHandler = (pfnMmioHandler)LOAD_SYM(cpu->handlerLib, "risaMmioHandler");
@@ -168,24 +168,24 @@ void setupSimulator(int argc, char **argv, rv32iHart *cpu) {
     processOptions(argc, argv, cpu);
 
     if (cpu->pfnMmioHandler == NULL) {
-        cpu->pfnMmioHandler = stubMmioHandler;
-        printf("[rISA]: INFO - 'risaMmioHandler' not found in handler lib, using default stub instead.\n");
+        cpu->pfnMmioHandler = defaultMmioHandler;
+        printf("[rISA]: INFO - 'risaMmioHandler' not found in handler lib, using default default instead.\n");
     }
     if (cpu->pfnIntHandler == NULL) {
-        cpu->pfnIntHandler  = stubIntHandler;
-        printf("[rISA]: INFO - 'risaIntHandle' not found in handler lib, using default stub instead.\n");
+        cpu->pfnIntHandler  = defaultIntHandler;
+        printf("[rISA]: INFO - 'risaIntHandle' not found in handler lib, using default default instead.\n");
     }
     if (cpu->pfnEnvHandler == NULL) {
-        cpu->pfnEnvHandler  = stubEnvHandler;
-        printf("[rISA]: INFO - 'risaEnvHandler' not found in handler lib, using default stub instead.\n");
+        cpu->pfnEnvHandler  = defaultEnvHandler;
+        printf("[rISA]: INFO - 'risaEnvHandler' not found in handler lib, using default default instead.\n");
     }
     if (cpu->pfnInitHandler == NULL) {
-        cpu->pfnInitHandler = stubInitHandler;
-        printf("[rISA]: INFO - 'risaInitHandler' not found in handler lib, using default stub instead.\n");
+        cpu->pfnInitHandler = defaultInitHandler;
+        printf("[rISA]: INFO - 'risaInitHandler' not found in handler lib, using default default instead.\n");
     }
     if (cpu->pfnExitHandler == NULL) {
-        cpu->pfnExitHandler = stubExitHandler;
-        printf("[rISA]: INFO - 'risaExitHandler' not found in handler lib, using default stub instead.\n");
+        cpu->pfnExitHandler = defaultExitHandler;
+        printf("[rISA]: INFO - 'risaExitHandler' not found in handler lib, using default default instead.\n");
     }
     if (cpu->intPeriodVal == 0) {
         cpu->intPeriodVal = DEFAULT_INT_PERIOD;
@@ -208,10 +208,32 @@ void setupSimulator(int argc, char **argv, rv32iHart *cpu) {
         cleanupSimulator(cpu, ENOMEM);
     }
     loadProgram(argc, argv, cpu);
+
+    // Grab the end-of-stack-pointer address
+    cpu->regFile[SP] = cpu->virtMem[SP_ADDR_OFFSET];
+
+    // Init the PC value
+    cpu->pc = cpu->virtMem[START_PC_ADDR_OFFSET];
+
     cpu->pfnInitHandler(cpu);
+    return;
 }
 
-const InstFormats OpcodeToFormat[128] = {
+const char *g_regfileAliasLookup[] = {
+    "zero",
+    "ra",
+    "sp",
+    "gp", "tp",
+    "t0", "t1", "t2",
+    "s0",
+    "s1",
+    "a0", "a1",
+    "a2", "a3", "a4", "a5", "a6", "a7",
+    "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9", "s10", "s11",
+    "t3", "t4", "t5", "t6"
+};
+
+const InstFormats g_opcodeToFormat[128] = {
     /* 0b0000000 */ Undefined,
     /* 0b0000001 */ Undefined,
     /* 0b0000010 */ Undefined,

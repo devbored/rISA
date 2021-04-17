@@ -15,15 +15,16 @@ set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS} -march=rv32i")
 set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS} -mabi=ilp32")
 set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS} -nostartfiles")
 set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS} -nostdlib")
+set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS} -g")
 set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}" CACHE STRING "CFLAGS")
 set(CMAKE_ASM_FLAGS "${CMAKE_C_FLAGS}" CACHE STRING "")
 
-set(LINKER_SCRIPT          "${CMAKE_SOURCE_DIR}/test_program.ld")
+set(LINKER_SCRIPT          "${CMAKE_SOURCE_DIR}/../../ldscripts/risalriscv.x")
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -T${LINKER_SCRIPT}")
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-Map=sections.map")
 
-project(asm_example)
-enable_language(ASM)
-add_executable(test_program test_program.s)
+project(c_example)
+add_executable(test_program test_program.c)
 
 add_custom_command(
     TARGET test_program POST_BUILD

@@ -24,7 +24,7 @@ int main(int argc, char** argv) {
         // Fetch
         cpu.IF = ACCESS_MEM_W(cpu.virtMem, cpu.pc);
         cpu.instFields.opcode = GET_OPCODE(cpu.IF);
-        switch (OpcodeToFormat[cpu.instFields.opcode]) {
+        switch (g_opcodeToFormat[cpu.instFields.opcode]) {
             case R: {
                 // Decode
                 cpu.instFields.rd     = GET_RD(cpu.IF);
@@ -269,8 +269,8 @@ int main(int argc, char** argv) {
                 cpu.immFields.imm4_1  = GET_IMM_4_1(cpu.IF);
                 cpu.immFields.imm10_5 = GET_IMM_10_5(cpu.IF);
                 cpu.immFields.imm12   = GET_IMM_12(cpu.IF);
-                cpu.immPartial = cpu.immFields.imm11 | (cpu.immFields.imm4_1 << 1) | 
-                    (cpu.immFields.imm10_5 << 5) | (cpu.immFields.imm12 << 11);
+                cpu.immPartial = cpu.immFields.imm4_1 | (cpu.immFields.imm10_5 << 4) |
+                    (cpu.immFields.imm11 << 10) | (cpu.immFields.imm12 << 11);
                 cpu.targetAddress = (s32)(cpu.immPartial << 20) >> 19;
                 cpu.ID = (cpu.instFields.funct3 << 7) | cpu.instFields.opcode;
                 // Execute

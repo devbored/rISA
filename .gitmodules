@@ -1,3 +1,1 @@
-[submodule "external/gdbstub"]
-	path = external/gdbstub
-	url = https://github.com/mborgerson/gdbstub.git
+

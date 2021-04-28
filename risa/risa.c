@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "risa.h"
-#include "gdbstub_sys.h"
+#include "gdbserver.h"
 
 void defaultMmioHandler(rv32iHart *cpu)  { return; }
 void defaultIntHandler(rv32iHart *cpu)   { return; }
@@ -199,7 +199,7 @@ void setupSimulator(int argc, char **argv, rv32iHart *cpu) {
     }
 
     if (cpu->opts.o_gdbEnabled) {
-        dbg_sys_start(cpu);
+        gdbserverInit(cpu);
     }
 
     cpu->virtMem = malloc(cpu->virtMemSize);

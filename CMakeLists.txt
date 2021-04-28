@@ -2,16 +2,15 @@ cmake_minimum_required(VERSION 3.10)
 
 project(risa)
 set(RISA_DIR ${CMAKE_SOURCE_DIR}/risa)
-set(GDBSTUB_DIR ${CMAKE_SOURCE_DIR}/external/gdbstub)
+set(GDBSTUB_DIR ${CMAKE_SOURCE_DIR}/external/minigdbstub)
 set(TEST_HANDLER_DIR ${CMAKE_SOURCE_DIR}/examples/test_handler)
 set(TEST_C_PROG_DIR ${CMAKE_SOURCE_DIR}/examples/test_program)
 
 add_executable(risa 
     ${RISA_DIR}/main.c
     ${RISA_DIR}/risa.c
-    ${RISA_DIR}/gdbstub_sys.c
+    ${RISA_DIR}/gdbserver.c
     ${RISA_DIR}/socket.c
-    ${GDBSTUB_DIR}/gdbstub.c
 )
 target_link_libraries(
     risa
@@ -27,6 +26,7 @@ target_compile_definitions(
     risa
     PUBLIC
     -DDEBUG
+    -DMINIGDBSTUB_DEBUG
 )
 set_property(
     TARGET risa

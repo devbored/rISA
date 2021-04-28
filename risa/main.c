@@ -2,7 +2,7 @@
 #include <time.h>
 #include <signal.h>
 #include "risa.h"
-#include "gdbstub_sys.h"
+#include "gdbserver.h"
 
 static volatile int g_sigIntDet = 0;
 static SIGINT_RET_TYPE sigintHandler(SIGINT_PARAM sig) { 
@@ -17,8 +17,9 @@ int main(int argc, char** argv) {
     printf("[rISA]: Running simulator...\n\n");
     cpu.startTime = clock();
     for (;;) {
+        // Process GDB commands
         if (cpu.opts.o_gdbEnabled) {
-            dbg_sys_process();
+            gdbserverCall(&cpu);
         }
 
         // Fetch

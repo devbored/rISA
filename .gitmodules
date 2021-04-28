@@ -1,1 +1,3 @@
-
+[submodule "external/minigdbstub"]
+	path = external/minigdbstub
+	url = git@bitbucket.org:aannestrand/minigdbstub.git

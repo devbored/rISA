@@ -28,6 +28,11 @@ target_compile_definitions(
     -DDEBUG
     -DMINIGDBSTUB_DEBUG
 )
+target_compile_options(
+    risa
+    PUBLIC
+    -Wall
+)
 set_property(
     TARGET risa
     PROPERTY C_STANDARD 99

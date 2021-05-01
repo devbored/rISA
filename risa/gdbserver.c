@@ -21,11 +21,23 @@ void gdbserverInit(rv32iHart *cpu) {
 }
 
 void gdbserverCall(rv32iHart *cpu) {
+    // Update regs
+    u32 regs[REGISTER_COUNT+1];
+    for (int i=0; i<REGISTER_COUNT; ++i) {
+        regs[i] = cpu->regFile[i];
+    }
+    // Append PC reg
+    regs[REGISTER_COUNT] = cpu->pc;
+
     // Create and write values to minigdbstub process call object
     mgdbProcObj mgdbObj = {0};
-    mgdbObj.regs = (char*)cpu->regFile;
-    mgdbObj.regsSize = sizeof(cpu->regFile);
+    mgdbObj.regs = (char*)regs;
+    mgdbObj.regsSize = sizeof(regs);
     mgdbObj.regsCount = REGISTER_COUNT;
+    if (cpu->cycleCounter > 0) {
+        mgdbObj.opts.o_signalOnEntry = 1;
+    }
+    mgdbObj.opts.o_enableLogging = 0;
     mgdbObj.usrData = (void*)cpu;
 
     // Call into minigdbstub
@@ -39,7 +51,7 @@ static void minigdbstubUsrWriteMem(size_t addr, unsigned char data, void *usrDat
 }
 
 static unsigned char minigdbstubUsrReadMem(size_t addr, void *usrData) {
-    return '0';
+    return 0;
 }
 
 static void minigdbstubUsrContinue(void *usrData) {
@@ -56,7 +68,7 @@ static char minigdbstubUsrGetchar(void *usrData)
     while (1) {
         char packet;
         size_t len = sizeof(packet);
-        int err = readSocket(cpuHandle->gdbFields.connectFd, &packet, len);
+        readSocket(cpuHandle->gdbFields.connectFd, &packet, len);
         
         // TODO: Clean this up?
         return packet;

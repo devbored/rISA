@@ -36,7 +36,8 @@ typedef int32_t s32;
 #define SIGINT_REGISTER(cpu, function)  do {                                                                    \
                                             if (!SetConsoleCtrlHandler((PHANDLER_ROUTINE)function,TRUE)) {      \
                                                 printf("[rISA]: Error. Couldn't register sigint handler.\n");   \
-                                                cleanupSimulator(cpu, ECANCELED);                               \
+                                                cleanupSimulator(cpu);                                          \
+                                                return ECANCELED;                                               \
                                             }                                                                   \
                                         } while (0)
 #else // --- *nix
@@ -54,7 +55,8 @@ typedef int32_t s32;
 #define SIGINT_REGISTER(cpu, function)  do {                                                                    \
                                             if ((signal(SIGINT,function) == SIG_ERR)) {                         \
                                                 printf("[rISA]: Error. Couldn't register sigint handler.\n");   \
-                                                cleanupSimulator(cpu, ECANCELED);                               \
+                                                cleanupSimulator(cpu);                                          \
+                                                return ECANCELED;                                               \
                                             }                                                                   \
                                         } while (0)
 #endif
@@ -407,10 +409,11 @@ void defaultEnvHandler(rv32iHart *cpu);
 void defaultInitHandler(rv32iHart *cpu);
 void defaultExitHandler(rv32iHart *cpu);
 void printHelp(void);
-void cleanupSimulator(rv32iHart *cpu, int err);
+void cleanupSimulator(rv32iHart *cpu);
 SimulatorOptions isOption(const char *arg);
-void processOptions(int argc, char** argv, rv32iHart *cpu);
-void loadProgram(int argc, char **argv, rv32iHart *cpu);
-void setupSimulator(int argc, char **argv, rv32iHart *cpu);
+int processOptions(int argc, char** argv, rv32iHart *cpu);
+int loadProgram(int argc, char **argv, rv32iHart *cpu);
+int setupSimulator(int argc, char **argv, rv32iHart *cpu);
+int executionLoop(rv32iHart *cpu);
 
 #endif // RISA_H

@@ -62,7 +62,7 @@ int startServer(rv32iHart *cpu){
     // Connect to client
     int len = sizeof(client);
     printf("\n[rISA]: GDB server listening on port %hu.\n", cpu->gdbFields.serverPort);
-    cpu->gdbFields.connectFd = accept(cpu->gdbFields.socketFd, (struct sockaddr*)&client, &len);
+    cpu->gdbFields.connectFd = accept(cpu->gdbFields.socketFd, (struct sockaddr*)&client, (socklen_t*)&len);
     if (cpu->gdbFields.connectFd < 0) {
         printf("[rISA]: Error. Socket server accept for GDB failed.\n");
         stopServer(cpu);

@@ -25,7 +25,8 @@ void printHelp(void) {
         "           OPTIONS:\n"
         "               -m <uint> : Virtual memory/IO size (in bytes).\n"
         "               -l <file> : Dynamic library '.so/.dll' file to user-defined handler functions.\n"
-        "               -t        : Enable trace printing to stderr.\n"
+        "               -t <uint> : Simulator cycle timeout value [DEFAULT=INT32_MAX].\n"
+        "               -d        : Enable trace printing to stderr.\n"
         "               -i <uint> : Simulator interrupt-check timeout value [DEFAULT=500].\n"
         "               -gdb      : Run the simulator in GDB-mode.\n"
         "               -h        : Print help and exit.\n"
@@ -49,7 +50,8 @@ SimulatorOptions isOption(const char *arg) {
     if      (strcmp(arg, "-m")      == 0)   { return OPT_VIRT_MEM_SIZE; }
     else if (strcmp(arg, "-l")      == 0)   { return OPT_HANDLER_LIB;   }
     else if (strcmp(arg, "-h")      == 0)   { return OPT_HELP;          }
-    else if (strcmp(arg, "-t")      == 0)   { return OPT_TRACING;       }
+    else if (strcmp(arg, "-d")      == 0)   { return OPT_TRACING;       }
+    else if (strcmp(arg, "-t")      == 0)   { return OPT_TIMEOUT;       }
     else if (strcmp(arg, "-i")      == 0)   { return OPT_INTERRUPT;     }
     else if (strcmp(arg, "-gdb")    == 0)   { return OPT_GDB;           }
     else                                    { return OPT_UNKNOWN;       }
@@ -124,6 +126,17 @@ int processOptions(int argc, char **argv, rv32iHart *cpu) {
             }
             case OPT_GDB: {
                 cpu->opts.o_gdbEnabled = 1;
+                break;
+            }
+            case OPT_TIMEOUT: {
+                if (cpu->opts.o_timeout) {
+                    printf("[rISA]: Error. Ambiguous multiple '-t' options defined - specify only one.\n");
+                    printHelp();
+                    exit(1);
+                }
+                long timeout = atol(argv[i+1]);
+                cpu->timeoutVal = timeout;
+                cpu->opts.o_timeout = 1;
                 break;
             }
             default: // --- Unknown value if prior arg was not a valid OPTION <value> ---
@@ -241,10 +254,18 @@ int executionLoop(rv32iHart *cpu) {
     cpu->startTime = clock();
     SIGINT_REGISTER(cpu, sigintHandler);
     for (;;) {
+        // Normal exit/cleanup path
+        if (g_sigIntDet || (cpu->opts.o_timeout && cpu->cycleCounter == cpu->timeoutVal)) {
+            cpu->endTime = clock();
+            cleanupSimulator(cpu);
+            return 0;
+        }
         // Process GDB commands
         if (cpu->opts.o_gdbEnabled) {
             gdbserverCall(cpu);
         }
+        cpu->cycleCounter++;
+
         // Fetch
         cpu->IF = ACCESS_MEM_W(cpu->virtMem, cpu->pc);
         cpu->instFields.opcode = GET_OPCODE(cpu->IF);
@@ -589,22 +610,18 @@ int executionLoop(rv32iHart *cpu) {
                 return EILSEQ;
             }
         }
-        cpu->cycleCounter++;
-        cpu->pc += 4;
-        if (g_sigIntDet) { // Normal exit/cleanup
-            cpu->endTime = clock();
-            cleanupSimulator(cpu);
-            return 0;
-        }
+        // If PC is out-of-bounds
         if (cpu->pc > cpu->virtMemSize) {
             printf("[rISA]: Error. Program counter is out of range.\n");
             cpu->endTime = clock();
             cleanupSimulator(cpu);
             return EFAULT;
         }
+
         if ((cpu->cycleCounter % cpu->intPeriodVal) == 0) {
             cpu->pfnIntHandler(cpu);
         }
+        cpu->pc += 4;
         cpu->regFile[0] = 0;
     }
 }

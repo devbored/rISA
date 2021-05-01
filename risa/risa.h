@@ -154,6 +154,7 @@ typedef struct rv32iHart{
     u32                 *virtMem;
     u32                 virtMemSize;
     u32                 intPeriodVal;
+    u32                 timeoutVal;
     clock_t             startTime;
     clock_t             endTime;
     LIB_HANDLE          handlerLib;
@@ -178,10 +179,11 @@ typedef enum {
     OPT_HANDLER_LIB     = (1<<1),
     OPT_HELP            = (1<<2),
     OPT_TRACING         = (1<<3),
-    OPT_INTERRUPT       = (1<<4),
-    OPT_GDB             = (1<<5),
-    OPT_UNKNOWN         = (1<<6),
-    VALUE_OPTS          = (OPT_VIRT_MEM_SIZE | OPT_HANDLER_LIB | OPT_INTERRUPT)
+    OPT_TIMEOUT         = (1<<4),
+    OPT_INTERRUPT       = (1<<5),
+    OPT_GDB             = (1<<6),
+    OPT_UNKNOWN         = (1<<7),
+    VALUE_OPTS          = (OPT_VIRT_MEM_SIZE | OPT_HANDLER_LIB | OPT_INTERRUPT | OPT_TIMEOUT)
 } SimulatorOptions;
 
 // --- RV32I Instructions ---

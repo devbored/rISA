@@ -23,8 +23,8 @@ void printHelp(void) {
         "           Example: risa -m 1024 my_riscv_program.hex"
         "\n\n"
         "           OPTIONS:\n"
-        "               -m <uint> : Virtual memory/IO size (in bytes).\n"
-        "               -l <file> : Dynamic library '.so/.dll' file to user-defined handler functions.\n"
+        "               -m <uint> : Virtual memory/IO size (in bytes) [DEFAULT=16KB].\n"
+        "               -l <file> : Shared library file to user-defined handler functions [DEFAULT=stubs].\n"
         "               -t <uint> : Simulator cycle timeout value [DEFAULT=INT32_MAX].\n"
         "               -d        : Enable trace printing to stderr.\n"
         "               -i <uint> : Simulator interrupt-check timeout value [DEFAULT=500].\n"
@@ -167,7 +167,7 @@ int loadProgram(int argc, char **argv, rv32iHart *cpu) {
         cleanupSimulator(cpu);
         return EIO;
     }
-    for (int i=0; !feof(binFile) != 0; ++i) {
+    for (int i=0; feof(binFile) == 0; ++i) {
         if (i >= (cpu->virtMemSize / sizeof(u32))) {
             printf("[rISA]: ERROR - Could not fit <%s> in simulator's virtual memory.\n", argv[argc-1]);
             fclose(binFile);
@@ -196,32 +196,32 @@ int setupSimulator(int argc, char **argv, rv32iHart *cpu) {
 
     if (cpu->pfnMmioHandler == NULL) {
         cpu->pfnMmioHandler = defaultMmioHandler;
-        printf("[rISA]: INFO - 'risaMmioHandler' not found in handler lib, using default default instead.\n");
+        printf("[rISA]: INFO - Using stub for risaMmioHandler.\n");
     }
     if (cpu->pfnIntHandler == NULL) {
         cpu->pfnIntHandler  = defaultIntHandler;
-        printf("[rISA]: INFO - 'risaIntHandle' not found in handler lib, using default default instead.\n");
+        printf("[rISA]: INFO - Using stub for risaIntHandle.\n");
     }
     if (cpu->pfnEnvHandler == NULL) {
         cpu->pfnEnvHandler  = defaultEnvHandler;
-        printf("[rISA]: INFO - 'risaEnvHandler' not found in handler lib, using default default instead.\n");
+        printf("[rISA]: INFO - Using stub for risaEnvHandler.\n");
     }
     if (cpu->pfnInitHandler == NULL) {
         cpu->pfnInitHandler = defaultInitHandler;
-        printf("[rISA]: INFO - 'risaInitHandler' not found in handler lib, using default default instead.\n");
+        printf("[rISA]: INFO - Using stub for risaInitHandler.\n");
     }
     if (cpu->pfnExitHandler == NULL) {
         cpu->pfnExitHandler = defaultExitHandler;
-        printf("[rISA]: INFO - 'risaExitHandler' not found in handler lib, using default default instead.\n");
+        printf("[rISA]: INFO - Using stub for risaExitHandler.\n");
     }
     if (cpu->intPeriodVal == 0) {
         cpu->intPeriodVal = DEFAULT_INT_PERIOD;
-        printf("[rISA]: INFO - Interrupt period cannot be 0, using default value '%d' instead.\n",
+        printf("[rISA]: INFO - Using default value '%d' for interrupt period.\n",
             DEFAULT_INT_PERIOD);
     }
     if (cpu->virtMemSize == 0) {
         cpu->virtMemSize = DEFAULT_VIRT_MEM_SIZE;
-        printf("[rISA]: INFO - Virtual memory size cannot be 0, using default value '%d' instead.\n",
+        printf("[rISA]: INFO - Using default value '%d' for virtual memory size.\n",
             DEFAULT_VIRT_MEM_SIZE);
     }
 
@@ -229,7 +229,7 @@ int setupSimulator(int argc, char **argv, rv32iHart *cpu) {
         gdbserverInit(cpu);
     }
 
-    cpu->virtMem = malloc(cpu->virtMemSize);
+    cpu->virtMem = (u32*)malloc(cpu->virtMemSize);
     if (cpu->virtMem == NULL) {
         printf("[rISA]: ERROR - Could not allocate virtual memory.\n");
         cleanupSimulator(cpu);

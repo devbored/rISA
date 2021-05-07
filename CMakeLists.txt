@@ -7,10 +7,6 @@ set(TEST_HANDLER_DIR ${CMAKE_SOURCE_DIR}/examples/test_handler)
 set(TEST_C_PROG_DIR ${CMAKE_SOURCE_DIR}/examples/test_program)
 set(TESTS_DIR ${CMAKE_SOURCE_DIR}/tests)
 
-# Conan setup
-include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
-conan_basic_setup()
-
 set(RISA_SRCS
     ${RISA_DIR}/risa.c
     ${RISA_DIR}/gdbserver.c
@@ -39,8 +35,8 @@ set_property(
     PROPERTY C_STANDARD 99
 )
 
-add_subdirectory(${CMAKE_SOURCE_DIR}/examples/test_handler)
 add_subdirectory(${CMAKE_SOURCE_DIR}/tests)
+add_subdirectory(${CMAKE_SOURCE_DIR}/examples/test_handler)
 
 # Example RISC-V C program uses separate cross-compiler
 # (Needs to run as separate CMake command due to this)

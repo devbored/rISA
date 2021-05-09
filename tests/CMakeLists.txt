@@ -6,6 +6,8 @@ set(GTEST_BASEDIR "")
 find_library(GTEST gtest HINTS ${GTEST_BASEDIR} REQUIRED)
 find_library(GTEST_MAIN gtest_main HINTS ${GTEST_BASEDIR} REQUIRED)
 
+find_package(Threads)
+
 include_directories(${RISA_DIR})
 include_directories(${TESTS_DIR})
 include_directories(${CMAKE_SOURCE_DIR})
@@ -16,6 +18,5 @@ add_compile_options(-pedantic)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
-# Tests
 add_executable(risa_tests test_args.cpp ${RISA_SRCS})
-target_link_libraries(risa_tests ${GTEST} ${GTEST_MAIN} ${CMAKE_DL_LIBS})
+target_link_libraries(risa_tests ${GTEST} ${GTEST_MAIN} ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT})

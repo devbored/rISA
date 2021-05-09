@@ -6,6 +6,13 @@ set(GDBSTUB_DIR ${CMAKE_SOURCE_DIR}/external/minigdbstub)
 set(TEST_HANDLER_DIR ${CMAKE_SOURCE_DIR}/examples/test_handler)
 set(TEST_C_PROG_DIR ${CMAKE_SOURCE_DIR}/examples/test_program)
 set(TESTS_DIR ${CMAKE_SOURCE_DIR}/tests)
+option(BUILD_TESTS "Build unit tests" ON)
+
+# If Conan was used
+if(EXISTS ${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
+    include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
+    conan_basic_setup()
+endif(EXISTS ${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
 
 set(RISA_SRCS
     ${RISA_DIR}/risa.c
@@ -35,7 +42,9 @@ set_property(
     PROPERTY C_STANDARD 99
 )
 
-add_subdirectory(${CMAKE_SOURCE_DIR}/tests)
+if(BUILD_TESTS)
+    add_subdirectory(${CMAKE_SOURCE_DIR}/tests)
+endif(BUILD_TESTS)
 add_subdirectory(${CMAKE_SOURCE_DIR}/examples/test_handler)
 
 # Example RISC-V C program uses separate cross-compiler

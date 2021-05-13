@@ -10,6 +10,7 @@ find_package(Threads)
 
 include_directories(${RISA_DIR})
 include_directories(${TESTS_DIR})
+include_directories(${ARGPARSE_DIR})
 include_directories(${CMAKE_SOURCE_DIR})
 include_directories(${CMAKE_SOURCE_DIR}/external/minigdbstub)
 

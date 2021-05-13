@@ -151,6 +151,7 @@ typedef struct rv32iHart{
     InstructionFields   instFields;
     u32                 targetAddress;
     u32                 cycleCounter;
+    char                *programFile;
     u32                 *virtMem;
     u32                 virtMemSize;
     u32                 intPeriodVal;
@@ -412,8 +413,6 @@ void defaultInitHandler(rv32iHart *cpu);
 void defaultExitHandler(rv32iHart *cpu);
 void printHelp(void);
 void cleanupSimulator(rv32iHart *cpu);
-SimulatorOptions isOption(const char *arg);
-int processOptions(int argc, char** argv, rv32iHart *cpu);
 int loadProgram(int argc, char **argv, rv32iHart *cpu);
 int setupSimulator(int argc, char **argv, rv32iHart *cpu);
 int executionLoop(rv32iHart *cpu);

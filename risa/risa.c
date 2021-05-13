@@ -2,8 +2,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <signal.h>
+
 #include "risa.h"
 #include "gdbserver.h"
+#include "miniargparse.h"
 
 static volatile int g_sigIntDet = 0;
 static SIGINT_RET_TYPE sigintHandler(SIGINT_PARAM sig) {
@@ -22,16 +24,21 @@ void printHelp(void) {
         "[rISA]:    Usage: risa [OPTIONS] <program_binary>\n"
         "           Example: risa -m 1024 my_riscv_program.hex"
         "\n\n"
-        "           OPTIONS:\n"
-        "               -m <uint> : Virtual memory/IO size (in bytes) [DEFAULT=16KB].\n"
-        "               -l <file> : Shared library file to user-defined handler functions [DEFAULT=stubs].\n"
-        "               -t <uint> : Simulator cycle timeout value [DEFAULT=INT32_MAX].\n"
-        "               -d        : Enable trace printing to stderr.\n"
-        "               -i <uint> : Simulator interrupt-check timeout value [DEFAULT=500].\n"
-        "               -gdb      : Run the simulator in GDB-mode.\n"
-        "               -h        : Print help and exit.\n"
-        "\n"
+        "OPTIONS:\n"
     );
+    miniargparseOpt *tmp = g_miniargparseHead;
+    while (tmp != NULL) {
+        if (tmp->infoBits.hasValue) {
+            printf("  %s <value> \n  %s=<value> \n        %s\n\n",
+                tmp->shortName, tmp->longName, tmp->description);
+        }
+        else {
+            printf("  %s         \n  %s         \n        %s\n\n",
+                tmp->shortName, tmp->longName, tmp->description);
+        }
+        tmp = tmp->next;
+    }
+    printf("\n");
 }
 
 void cleanupSimulator(rv32iHart *cpu) {
@@ -46,123 +53,11 @@ void cleanupSimulator(rv32iHart *cpu) {
     );
 }
 
-SimulatorOptions isOption(const char *arg) {
-    if      (strcmp(arg, "-m")      == 0)   { return OPT_VIRT_MEM_SIZE; }
-    else if (strcmp(arg, "-l")      == 0)   { return OPT_HANDLER_LIB;   }
-    else if (strcmp(arg, "-h")      == 0)   { return OPT_HELP;          }
-    else if (strcmp(arg, "-d")      == 0)   { return OPT_TRACING;       }
-    else if (strcmp(arg, "-t")      == 0)   { return OPT_TIMEOUT;       }
-    else if (strcmp(arg, "-i")      == 0)   { return OPT_INTERRUPT;     }
-    else if (strcmp(arg, "-gdb")    == 0)   { return OPT_GDB;           }
-    else                                    { return OPT_UNKNOWN;       }
-}
-
-int processOptions(int argc, char **argv, rv32iHart *cpu) {
-    for (int i=1; i<argc; ++i) {
-        if (((i+1) != argc) && (isOption(argv[i]) & VALUE_OPTS) && (isOption(argv[i+1]) & VALUE_OPTS)) {
-            printf("[rISA]: ERROR - Invalid formatting of options.\n");
-            printHelp();
-            cleanupSimulator(cpu);
-            return EINVAL;
-        }
-        if (((i+1) == argc) && (isOption(argv[i]) & VALUE_OPTS)) {
-            printf("[rISA]: ERROR - Invalid formatting of options.\n");
-            printHelp();
-            cleanupSimulator(cpu);
-            return EINVAL;
-        }
-        switch (isOption(argv[i])) {
-            case OPT_VIRT_MEM_SIZE: {
-                if (cpu->opts.o_virtMemSize) {
-                    printf("[rISA]: ERROR - Ambiguous multiple '-m' options defined - specify only one.\n");
-                    printHelp();
-                    cleanupSimulator(cpu);
-                    return EINVAL;
-                }
-                int size = (u32)atoi(argv[i+1]);
-                cpu->virtMemSize = size;
-                cpu->opts.o_virtMemSize = 1;
-                break;
-            }
-            case OPT_HANDLER_LIB: {
-                if (cpu->opts.o_definedHandles) {
-                    printf("[rISA]: ERROR - Ambiguous multiple '-l' options defined (specify only one).\n");
-                    printHelp();
-                    cleanupSimulator(cpu);
-                    return EINVAL;
-                }
-                cpu->handlerLib = LOAD_LIB(argv[i+1]);
-                if (cpu->handlerLib == NULL) {
-                    printf(
-                        "[rISA]: INFO - Could not load dynamic library <%s>.\n"
-                        "        Using default default handlers instead.\n", argv[i+1]
-                    );
-                }
-                cpu->pfnMmioHandler = (pfnMmioHandler)LOAD_SYM(cpu->handlerLib, "risaMmioHandler");
-                cpu->pfnIntHandler  = (pfnIntHandler)LOAD_SYM(cpu->handlerLib,  "risaIntHandler");
-                cpu->pfnEnvHandler  = (pfnEnvHandler)LOAD_SYM(cpu->handlerLib,  "risaEnvHandler");
-                cpu->pfnInitHandler = (pfnInitHandler)LOAD_SYM(cpu->handlerLib, "risaInitHandler");
-                cpu->pfnExitHandler = (pfnExitHandler)LOAD_SYM(cpu->handlerLib, "risaExitHandler");
-                cpu->opts.o_definedHandles = 1;
-                break;
-            }
-            case OPT_HELP:
-                printHelp();
-                cleanupSimulator(cpu);
-                exit(0);
-            case OPT_TRACING:
-                cpu->opts.o_tracePrintEnable = 1;
-                break;
-            case OPT_INTERRUPT: {
-                if (cpu->opts.o_intPeriod) {
-                    printf("[rISA]: ERROR - Ambiguous multiple '-i' options defined (specify only one).\n");
-                    printHelp();
-                    cleanupSimulator(cpu);
-                    return EINVAL;
-                }
-                cpu->intPeriodVal = (u32)atoi(argv[i+1]);
-                cpu->opts.o_intPeriod = 1;
-                break;
-            }
-            case OPT_GDB: {
-                cpu->opts.o_gdbEnabled = 1;
-                break;
-            }
-            case OPT_TIMEOUT: {
-                if (cpu->opts.o_timeout) {
-                    printf("[rISA]: Error. Ambiguous multiple '-t' options defined - specify only one.\n");
-                    printHelp();
-                    exit(1);
-                }
-                long timeout = atol(argv[i+1]);
-                cpu->timeoutVal = timeout;
-                cpu->opts.o_timeout = 1;
-                break;
-            }
-            default: // --- Unknown value if prior arg was not a valid OPTION <value> ---
-                if ((i != argc-1) && !(isOption(argv[i-1]) & VALUE_OPTS)) {
-                    printf("[rISA]: ERROR - Unknown option <%s>.\n", argv[i]);
-                    printHelp();
-                    cleanupSimulator(cpu);
-                    return EINVAL;
-                }
-            break;
-        }
-    }
-    return 0;
-}
-
 int loadProgram(int argc, char **argv, rv32iHart *cpu) {
-    if ((isOption(argv[argc-1]) != OPT_UNKNOWN) || (isOption(argv[argc-2]) == VALUE_OPTS)) {
-        printf("[rISA]: ERROR - No program specified.\n");
-        printHelp();
-        cleanupSimulator(cpu);
-        return EINVAL;
-    }
     FILE* binFile;
-    OPEN_FILE(binFile, argv[argc-1], "rb");
+    OPEN_FILE(binFile, cpu->programFile, "rb");
     if (binFile == NULL) {
-        printf("[rISA]: ERROR - Could not open file <%s>.\n", argv[argc-1]);
+        printf("[rISA]: ERROR - Could not open file <%s>.\n", cpu->programFile);
         printHelp();
         cleanupSimulator(cpu);
         return EIO;
@@ -181,19 +76,78 @@ int loadProgram(int argc, char **argv, rv32iHart *cpu) {
 }
 
 int setupSimulator(int argc, char **argv, rv32iHart *cpu) {
-    int err;
-    if (argc == 1) {
-        printf("[rISA]: ERROR - No program specified.\n");
+    int err = 0;
+
+    // Define opts
+    MINIARGPARSE_OPT(virtMem, "m", "memSize", 1, "Virtual memory/IO size (in bytes) [DEFAULT=16KB].");
+    MINIARGPARSE_OPT(handlerLib, "l", "handlerLibrary", 1,
+        "Shared library file to user-defined handler functions [DEFAULT=stubs].");
+    MINIARGPARSE_OPT(help, "h", "help", 0, "Print help and exit.");
+    MINIARGPARSE_OPT(tracing, "", "tracing", 0, "Enable trace printing to stderr.");
+    MINIARGPARSE_OPT(timeout, "t", "timeout", 1, "Simulator cycle timeout value [DEFAULT=INT32_MAX].");
+    MINIARGPARSE_OPT(interrupt, "i", "interruptPeriod", 1,
+        "Simulator interrupt-check timeout value [DEFAULT=500].");
+    MINIARGPARSE_OPT(gdb, "g", "gdb", 0, "Run the simulator in GDB-mode.");
+
+    // Parse the args
+    int unknownOpt = miniargparseParse(argc, argv);
+    if (unknownOpt > 0) {
+        printf("[rISA]: ERROR - Unknown option [ %s ] used.\n", argv[unknownOpt]);
         printHelp();
         cleanupSimulator(cpu);
         return EINVAL;
     }
 
-    err = processOptions(argc, argv, cpu);
-    if (err) {
-        return err;
+    // Exit early if help was defined
+    if (help.infoBits.used) {
+        printHelp();
+        cleanupSimulator(cpu);
+        exit(0);
     }
 
+    // Check if any option had an error
+    miniargparseOpt *tmp = g_miniargparseHead;
+    while (tmp != NULL) {
+        if (tmp->infoBits.hasErr) {
+            printf("[rISA]: ERROR - %s [ Option: %s ]\n", tmp->errValMsg, argv[tmp->index]);
+            printHelp();
+            cleanupSimulator(cpu);
+            return EINVAL;
+        }
+        tmp = tmp->next;
+    }
+
+    // Get needed positional arg (i.e. program binary)
+    int programIndex = miniargparseGetPositionalArg(argc, argv, 0);
+    if (programIndex == 0) {
+        printf("[rISA]: ERROR - No program binary given.\n");
+        printHelp();
+        cleanupSimulator(cpu);
+        return EINVAL;
+    }
+    cpu->programFile = argv[programIndex];
+
+    // Get value items
+    cpu->virtMemSize = (u32)atoi(virtMem.value);
+    cpu->timeoutVal = (long)atol(timeout.value);
+    cpu->intPeriodVal = (u32)atoi(interrupt.value);
+    cpu->opts.o_timeout = timeout.infoBits.used;
+    cpu->opts.o_tracePrintEnable = tracing.infoBits.used;
+    cpu->opts.o_gdbEnabled = gdb.infoBits.used;
+
+    // Load handler lib and syms (if given)
+    cpu->handlerLib = LOAD_LIB(handlerLib.value);
+    if (cpu->handlerLib == NULL) {
+        printf(
+            "[rISA]: INFO - Could not load dynamic library <%s>.\n"
+            "        Using default default handlers instead.\n", handlerLib.value
+        );
+    }
+    cpu->pfnMmioHandler = (pfnMmioHandler)LOAD_SYM(cpu->handlerLib, "risaMmioHandler");
+    cpu->pfnIntHandler  = (pfnIntHandler)LOAD_SYM(cpu->handlerLib,  "risaIntHandler");
+    cpu->pfnEnvHandler  = (pfnEnvHandler)LOAD_SYM(cpu->handlerLib,  "risaEnvHandler");
+    cpu->pfnInitHandler = (pfnInitHandler)LOAD_SYM(cpu->handlerLib, "risaInitHandler");
+    cpu->pfnExitHandler = (pfnExitHandler)LOAD_SYM(cpu->handlerLib, "risaExitHandler");
     if (cpu->pfnMmioHandler == NULL) {
         cpu->pfnMmioHandler = defaultMmioHandler;
         printf("[rISA]: INFO - Using stub for risaMmioHandler.\n");

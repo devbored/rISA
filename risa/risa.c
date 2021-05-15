@@ -26,7 +26,7 @@ void printHelp(void) {
         "\n\n"
         "OPTIONS:\n"
     );
-    miniargparseOpt *tmp = g_miniargparseHead;
+    miniargparseOpt *tmp = miniargparseOptlistController(NULL);
     while (tmp != NULL) {
         if (tmp->infoBits.hasValue) {
             printf("  %s <value> \n  %s=<value> \n        %s\n\n",
@@ -106,7 +106,7 @@ int setupSimulator(int argc, char **argv, rv32iHart *cpu) {
     }
 
     // Check if any option had an error
-    miniargparseOpt *tmp = g_miniargparseHead;
+    miniargparseOpt *tmp = miniargparseOptlistController(NULL);
     while (tmp != NULL) {
         if (tmp->infoBits.hasErr) {
             printf("[rISA]: ERROR - %s [ Option: %s ]\n", tmp->errValMsg, argv[tmp->index]);

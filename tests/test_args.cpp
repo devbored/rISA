@@ -10,3 +10,7 @@ extern "C" { // rISA is a pure C project - prevent name mangling
     #include "test_common.hpp"
     #include "risa.h"
 }
+
+TEST(risa, dummy) {
+    EXPECT_EQ(1, 1);
+}

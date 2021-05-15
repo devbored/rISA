@@ -51,7 +51,7 @@ typedef int32_t s32;
 #define DLLEXPORT                       
 #define SIGINT_RET_TYPE                 void
 #define SIGINT_PARAM                    int
-#define SIGINT_RET                      
+#define SIGINT_RET                      do {} while(0)
 #define SIGINT_REGISTER(cpu, function)  do {                                                                    \
                                             if ((signal(SIGINT,function) == SIG_ERR)) {                         \
                                                 printf("[rISA]: Error. Couldn't register sigint handler.\n");   \
@@ -413,7 +413,7 @@ void defaultInitHandler(rv32iHart *cpu);
 void defaultExitHandler(rv32iHart *cpu);
 void printHelp(void);
 void cleanupSimulator(rv32iHart *cpu);
-int loadProgram(int argc, char **argv, rv32iHart *cpu);
+int loadProgram(rv32iHart *cpu);
 int setupSimulator(int argc, char **argv, rv32iHart *cpu);
 int executionLoop(rv32iHart *cpu);
 

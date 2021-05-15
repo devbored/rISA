@@ -53,7 +53,7 @@ void cleanupSimulator(rv32iHart *cpu) {
     );
 }
 
-int loadProgram(int argc, char **argv, rv32iHart *cpu) {
+int loadProgram(rv32iHart *cpu) {
     FILE* binFile;
     OPEN_FILE(binFile, cpu->programFile, "rb");
     if (binFile == NULL) {
@@ -64,7 +64,7 @@ int loadProgram(int argc, char **argv, rv32iHart *cpu) {
     }
     for (int i=0; feof(binFile) == 0; ++i) {
         if (i >= (cpu->virtMemSize / sizeof(u32))) {
-            printf("[rISA]: ERROR - Could not fit <%s> in simulator's virtual memory.\n", argv[argc-1]);
+            printf("[rISA]: ERROR - Could not fit <%s> in simulator's virtual memory.\n", cpu->programFile);
             fclose(binFile);
             cleanupSimulator(cpu);
             return ENOMEM;
@@ -143,11 +143,11 @@ int setupSimulator(int argc, char **argv, rv32iHart *cpu) {
             "        Using default default handlers instead.\n", handlerLib.value
         );
     }
-    cpu->pfnMmioHandler = (pfnMmioHandler)LOAD_SYM(cpu->handlerLib, "risaMmioHandler");
-    cpu->pfnIntHandler  = (pfnIntHandler)LOAD_SYM(cpu->handlerLib,  "risaIntHandler");
-    cpu->pfnEnvHandler  = (pfnEnvHandler)LOAD_SYM(cpu->handlerLib,  "risaEnvHandler");
-    cpu->pfnInitHandler = (pfnInitHandler)LOAD_SYM(cpu->handlerLib, "risaInitHandler");
-    cpu->pfnExitHandler = (pfnExitHandler)LOAD_SYM(cpu->handlerLib, "risaExitHandler");
+    cpu->pfnMmioHandler = (pfnMmioHandler)(uintptr_t)LOAD_SYM(cpu->handlerLib, "risaMmioHandler");
+    cpu->pfnIntHandler  = (pfnIntHandler)(uintptr_t)LOAD_SYM(cpu->handlerLib,  "risaIntHandler");
+    cpu->pfnEnvHandler  = (pfnEnvHandler)(uintptr_t)LOAD_SYM(cpu->handlerLib,  "risaEnvHandler");
+    cpu->pfnInitHandler = (pfnInitHandler)(uintptr_t)LOAD_SYM(cpu->handlerLib, "risaInitHandler");
+    cpu->pfnExitHandler = (pfnExitHandler)(uintptr_t)LOAD_SYM(cpu->handlerLib, "risaExitHandler");
     if (cpu->pfnMmioHandler == NULL) {
         cpu->pfnMmioHandler = defaultMmioHandler;
         printf("[rISA]: INFO - Using stub for risaMmioHandler.\n");
@@ -189,7 +189,7 @@ int setupSimulator(int argc, char **argv, rv32iHart *cpu) {
         cleanupSimulator(cpu);
         return ENOMEM;
     }
-    err = loadProgram(argc, argv, cpu);
+    err = loadProgram(cpu);
     if (err) {
         return err;
     }

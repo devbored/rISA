@@ -7,7 +7,6 @@
 
 #include <gtest/gtest.h>
 extern "C" { // rISA is a pure C project - prevent name mangling
-    #include "test_common.hpp"
     #include "risa.h"
 }
 

@@ -19,5 +19,6 @@ add_compile_options(-pedantic)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
-add_executable(risa_tests test_args.cpp ${RISA_SRCS})
+file(GLOB SRCS *.cpp)
+add_executable(risa_tests ${SRCS} ${RISA_SRCS})
 target_link_libraries(risa_tests ${GTEST} ${GTEST_MAIN} ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT})

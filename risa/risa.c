@@ -215,11 +215,8 @@ int executionLoop(rv32iHart *cpu) {
             return 0;
         }
         // Process GDB commands
-        if (cpu->opts.o_gdbEnabled && !cpu->gdbFields.gdbFlags.dbgContinue) {
+        if (cpu->opts.o_gdbEnabled) {
             gdbserverCall(cpu);
-            //if (cpu->gdbFields.gdbFlags.dbgBreak && (cpu->pc == cpu->gdbFields.breakAddr)) {
-            //    cpu->gdbFields.gdbFlags.dbgBreak = 0;
-            //}
         }
         cpu->cycleCounter++;
 

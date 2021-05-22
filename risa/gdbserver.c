@@ -21,6 +21,21 @@ void gdbserverInit(rv32iHart *cpu) {
 }
 
 void gdbserverCall(rv32iHart *cpu) {
+    // Check gdb flags
+    if (cpu->gdbFields.gdbFlags.dbgBreak && cpu->pc == cpu->gdbFields.breakAddr) {
+        cpu->gdbFields.gdbFlags.dbgBreak = 0;
+        cpu->gdbFields.gdbFlags.dbgContinue = 0;
+        cpu->gdbFields.gdbFlags.dbgStep = 0;
+    }
+    else if (cpu->gdbFields.gdbFlags.dbgStep) {
+        cpu->gdbFields.gdbFlags.dbgContinue = 0;
+        cpu->gdbFields.gdbFlags.dbgStep = 0;
+        return;
+    }
+    else if (cpu->gdbFields.gdbFlags.dbgContinue) {
+        return;
+    }
+
     // Update regs
     u32 regs[REGISTER_COUNT+1];
     for (int i=0; i<REGISTER_COUNT; ++i) {
@@ -37,7 +52,7 @@ void gdbserverCall(rv32iHart *cpu) {
     if (cpu->cycleCounter > 0) {
         mgdbObj.opts.o_signalOnEntry = 1;
     }
-    mgdbObj.opts.o_enableLogging = 0;
+    mgdbObj.opts.o_enableLogging = 1;
     mgdbObj.usrData = (void*)cpu;
 
     // Call into minigdbstub
@@ -63,6 +78,8 @@ static void minigdbstubUsrContinue(void *usrData) {
 }
 
 static void minigdbstubUsrStep(void *usrData) {
+    rv32iHart *cpuHandle = (rv32iHart*)usrData;
+    cpuHandle->gdbFields.gdbFlags.dbgStep = 1;
     return;
 }
 
@@ -83,4 +100,11 @@ static void minigdbstubUsrPutchar(char data, void *usrData)
 {
     rv32iHart *cpuHandle = (rv32iHart *)usrData;
     writeSocket(cpuHandle->gdbFields.connectFd, (const char *)&data, sizeof(char));
+}
+
+static void minigdbstubUsrProcessBreakpoint(int type, size_t addr, void *usrData) {
+    rv32iHart *cpuHandle = (rv32iHart *)usrData;
+    cpuHandle->gdbFields.breakAddr = addr;
+    cpuHandle->gdbFields.gdbFlags.dbgBreak = 1;
+    return;
 }

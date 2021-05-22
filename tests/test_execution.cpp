@@ -31,5 +31,5 @@ TEST(risa, test_basic_add_addi) {
     
     int err = executionLoop(&testCPU);
     EXPECT_EQ(0, err);
-    EXPECT_EQ(testCPU.regFile[8], 36);
+    EXPECT_EQ(testCPU.regFile[8], 36U);
 }

@@ -129,7 +129,7 @@ typedef struct {
 typedef struct {
     u32 dbgContinue : 1;
     u32 dbgStep     : 1;
-    u32 dbgHalt     : 1;
+    u32 dbgBreak    : 1;
 } GdbFlags;
 
 typedef struct {

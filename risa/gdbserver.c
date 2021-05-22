@@ -45,16 +45,20 @@ void gdbserverCall(rv32iHart *cpu) {
 }
 
 // User-defined minigdbstub handlers
-
 static void minigdbstubUsrWriteMem(size_t addr, unsigned char data, void *usrData) {
+    rv32iHart *cpuHandle = (rv32iHart*)usrData;
+    ACCESS_MEM_W(cpuHandle->virtMem, addr) = data;
     return;
 }
 
 static unsigned char minigdbstubUsrReadMem(size_t addr, void *usrData) {
-    return 0;
+    rv32iHart *cpuHandle = (rv32iHart*)usrData;
+    return ACCESS_MEM_B(cpuHandle->virtMem,addr);
 }
 
 static void minigdbstubUsrContinue(void *usrData) {
+    rv32iHart *cpuHandle = (rv32iHart*)usrData;
+    cpuHandle->gdbFields.gdbFlags.dbgContinue = 1;
     return;
 }
 
@@ -64,7 +68,7 @@ static void minigdbstubUsrStep(void *usrData) {
 
 static char minigdbstubUsrGetchar(void *usrData)
 {
-    rv32iHart *cpuHandle = (rv32iHart *)usrData;
+    rv32iHart *cpuHandle = (rv32iHart*)usrData;
     while (1) {
         char packet;
         size_t len = sizeof(packet);

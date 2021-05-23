@@ -1,6 +1,6 @@
-[submodule "external/minigdbstub"]
-	path = external/minigdbstub
-	url = git@bitbucket.org:aannestrand/minigdbstub.git
 [submodule "external/miniargparse"]
 	path = external/miniargparse
-	url = git@bitbucket.org:aannestrand/miniargparse.git
+	url = https://github.com/devbored/miniargparse.git
+[submodule "external/minigdbstub"]
+	path = external/minigdbstub
+	url = https://github.com/devbored/minigdbstub.git

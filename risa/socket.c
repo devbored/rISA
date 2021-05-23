@@ -72,7 +72,6 @@ int startServer(rv32iHart *cpu){
     return 0;
 }
 
-// TODO: Clean this up?
 int readSocket(int clientSocket, char *packet, size_t len) {
     const int res = recv(clientSocket, packet, len, 0);
 
@@ -93,7 +92,6 @@ int writeSocket(int clientSocket, const char *packet, size_t len) {
     if (clientSocket <= 0)
         return -1;
 
-    // TODO: POSIX? - Port to windows if so...
     if (send(clientSocket, packet, len, 0) == -1) {
         perror("send():");
     }

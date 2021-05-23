@@ -8,7 +8,11 @@ void gdbserverInit(rv32iHart *cpu) {
     if ((cpu->gdbFields.socketFd > 0) || (cpu->gdbFields.connectFd > 0)) {
         stopServer(cpu);
     }
-    startServer(cpu);
+
+    if (startServer(cpu) < 0) {
+        cleanupSimulator(cpu);
+        exit(-1);
+    }
     
     if (cpu->gdbFields.socketFd > 0) {
         printf("[rISA]: GDB server started.\n");
@@ -52,7 +56,7 @@ void gdbserverCall(rv32iHart *cpu) {
     if (cpu->cycleCounter > 0) {
         mgdbObj.opts.o_signalOnEntry = 1;
     }
-    mgdbObj.opts.o_enableLogging = 1;
+    mgdbObj.opts.o_enableLogging = 0;
     mgdbObj.usrData = (void*)cpu;
 
     // Call into minigdbstub
@@ -90,8 +94,6 @@ static char minigdbstubUsrGetchar(void *usrData)
         char packet;
         size_t len = sizeof(packet);
         readSocket(cpuHandle->gdbFields.connectFd, &packet, len);
-        
-        // TODO: Clean this up?
         return packet;
     }
 }
@@ -107,4 +109,11 @@ static void minigdbstubUsrProcessBreakpoint(int type, size_t addr, void *usrData
     cpuHandle->gdbFields.breakAddr = addr;
     cpuHandle->gdbFields.gdbFlags.dbgBreak = 1;
     return;
+}
+
+static void minigdbstubUsrKillSession(void *usrData) {
+    rv32iHart *cpuHandle = (rv32iHart *)usrData;
+    cpuHandle->endTime = clock();
+    cleanupSimulator(cpuHandle);
+    exit(0);
 }

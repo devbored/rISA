@@ -13,6 +13,7 @@ A simple RISC-V ISA Simulator.
 - Some compatible CMake Generator (e.g. GNU Make, Visual Studio, Ninja)
 - Some ANSI C compiler (C99 or higher)
 - GoogleTest - for building unit tests (Optional)
+    - C++11 or newer (Optional)
 
 ## Build instructions
 If you want to only build rISA:

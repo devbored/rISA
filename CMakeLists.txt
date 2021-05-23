@@ -9,6 +9,11 @@ set(TEST_C_PROG_DIR ${CMAKE_SOURCE_DIR}/examples/test_program)
 set(TESTS_DIR ${CMAKE_SOURCE_DIR}/tests)
 option(BUILD_TESTS "Build unit tests" ON)
 
+option(GDBLOG "Build with gdb packet log printing" OFF)
+if(GDBLOG)
+    add_definitions(-DGDBLOG)
+endif(GDBLOG)
+
 # If Conan was used
 if(EXISTS ${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
     include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)

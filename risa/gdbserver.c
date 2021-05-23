@@ -1,6 +1,7 @@
 #include "risa.h"
 #include "socket.h"
 #include "minigdbstub.h"
+#include "gdbserver.h"
 
 void gdbserverInit(rv32iHart *cpu) {
     cpu->gdbFields.serverPort = 3333;
@@ -56,7 +57,7 @@ void gdbserverCall(rv32iHart *cpu) {
     if (cpu->cycleCounter > 0) {
         mgdbObj.opts.o_signalOnEntry = 1;
     }
-    mgdbObj.opts.o_enableLogging = 0;
+    mgdbObj.opts.o_enableLogging = GDBLOG;
     mgdbObj.usrData = (void*)cpu;
 
     // Call into minigdbstub

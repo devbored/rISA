@@ -1,5 +1,6 @@
 #ifdef _WIN32
 #include <winsock2.h>
+typedef int socklen_t;
 #define SOCKET_ERR INVALID_SOCKET
 #else // *nix
 #include <sys/socket.h>

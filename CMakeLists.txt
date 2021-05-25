@@ -31,6 +31,9 @@ target_link_libraries(
     risa
     ${CMAKE_DL_LIBS}
 )
+if(WIN32)
+    target_link_libraries(risa ws2_32)
+endif(WIN32)
 target_include_directories(
     risa
     PUBLIC

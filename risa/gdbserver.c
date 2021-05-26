@@ -35,7 +35,6 @@ void gdbserverCall(rv32iHart *cpu) {
     else if (cpu->gdbFields.gdbFlags.dbgStep) {
         cpu->gdbFields.gdbFlags.dbgContinue = 0;
         cpu->gdbFields.gdbFlags.dbgStep = 0;
-        return;
     }
     else if (cpu->gdbFields.gdbFlags.dbgContinue) {
         return;

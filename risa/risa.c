@@ -365,7 +365,7 @@ int executionLoop(rv32iHart *cpu) {
                     }
                     case ADDI:  { // Add immediate
                         TRACE_I((cpu), "addi");
-                        cpu->regFile[cpu->instFields.rd] = cpu->targetAddress;
+                        cpu->regFile[cpu->instFields.rd] = cpu->regFile[cpu->instFields.rs1] + cpu->immFinal;
                         break;
                     }
                     case SLTI:  { // Set if less than immediate (signed)

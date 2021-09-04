@@ -10,12 +10,14 @@ set(TESTS_DIR ${CMAKE_SOURCE_DIR}/tests)
 option(BUILD_TESTS "Build unit tests" OFF)
 option(BUILD_RISCV_PROGRAM "Build example RISC-V program" OFF)
 option(GDBLOG "Build with gdb packet log printing" OFF)
+option(USING_CONAN OFF)
 if(GDBLOG)
     add_definitions(-DGDBLOG)
 endif(GDBLOG)
 
 # If Conan was used
 if(EXISTS ${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
+    set(USING_CONAN ON)
     include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
     conan_basic_setup()
 endif(EXISTS ${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
@@ -31,9 +33,7 @@ target_link_libraries(
     risa
     ${CMAKE_DL_LIBS}
 )
-if(WIN32)
-    target_link_libraries(risa ws2_32)
-endif(WIN32)
+
 target_include_directories(
     risa
     PUBLIC

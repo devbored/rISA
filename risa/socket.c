@@ -1,4 +1,5 @@
 #ifdef _WIN32
+#pragma comment(lib, "Ws2_32.lib")
 #include <winsock2.h>
 typedef int socklen_t;
 #define SOCKET_ERR INVALID_SOCKET
@@ -38,7 +39,7 @@ int startServer(rv32iHart *cpu){
         printf("[rISA]: Error. Socket creation for GDB failed.\n");
         return -1;
     }
-    
+
 #ifdef _WIN32
     localhostaddr.S_un.S_addr = htonl(INADDR_ANY);
 #else

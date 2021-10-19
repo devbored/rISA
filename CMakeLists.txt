@@ -7,20 +7,13 @@ set(ARGPARSE_DIR ${CMAKE_SOURCE_DIR}/external/miniargparse)
 set(TEST_HANDLER_DIR ${CMAKE_SOURCE_DIR}/examples/test_handler)
 set(TEST_C_PROG_DIR ${CMAKE_SOURCE_DIR}/examples/test_program)
 set(TESTS_DIR ${CMAKE_SOURCE_DIR}/tests)
+set(CROSS_GENERATOR)
 option(BUILD_TESTS "Build unit tests" OFF)
 option(BUILD_RISCV_PROGRAM "Build example RISC-V program" OFF)
 option(GDBLOG "Build with gdb packet log printing" OFF)
-option(USING_CONAN OFF)
 if(GDBLOG)
     add_definitions(-DGDBLOG)
 endif(GDBLOG)
-
-# If Conan was used
-if(EXISTS ${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
-    set(USING_CONAN ON)
-    include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
-    conan_basic_setup()
-endif(EXISTS ${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
 
 set(RISA_SRCS
     ${RISA_DIR}/risa.c
@@ -60,8 +53,11 @@ add_subdirectory(${CMAKE_SOURCE_DIR}/examples/test_handler)
 # Example RISC-V C program uses separate cross-compiler
 # (Needs to run as separate CMake command due to this)
 if(BUILD_RISCV_PROGRAM)
+    if(NOT DEFINED ${CROSS_GENERATOR})
+        set(CROSS_GENERATOR "Unix Makefiles")
+    endif()
     add_custom_target(TEST_PROG_C ALL
-        COMMAND cmake ${TEST_C_PROG_DIR} -B${CMAKE_BINARY_DIR}/examples/test_program -G ${CMAKE_GENERATOR}
+        COMMAND cmake ${TEST_C_PROG_DIR} -B${CMAKE_BINARY_DIR}/examples/test_program -G ${CROSS_GENERATOR}
         COMMAND cmake --build ${CMAKE_BINARY_DIR}/examples/test_program
     )
 endif(BUILD_RISCV_PROGRAM)

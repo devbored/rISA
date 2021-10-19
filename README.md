@@ -33,34 +33,14 @@ If you want to build rISA with the example RISC-V `test_program`:
 
     $ cmake -DBUILD_RISCV_PROGRAM=ON . -Bbuild
     $ cmake --build build
-    
+
 ## Building rISA with unit tests
-[GoogleTest](https://github.com/google/googletest) is used as the unit testing framework. There are
-a couple of different ways to build the tests:
-
-If GoogleTest libs are already installed in a default system location:
-
-    $ cmake -DBUILD_TESTS=ON . -Bbuild
-    $ cmake --build build
-
-If GoogleTest libs are already installed in a non-default system location:
-
-    $ cmake -DBUILD_TESTS=ON -DGTEST_BASEDIR=<path_to_gtest_libs> . -Bbuild
-    $ cmake --build build
-
-## Building rISA with unit tests (with Conan)
-If you don't have the gtest libs already installed, [Conan](https://docs.conan.io/en/latest/installation.html) can be
-used to pull gtest in, then build with CMake.
-
-Conan is cross-platform and implemented in Python - to install Conan:
-
-    $ pip install conan
-
-Use Conan to pull the gtest package and build with CMake:
-
-    $ conan install -if build conanfile.txt
-    $ cmake -DBUILD_TESTS=ON . -Bbuild
-    $ cmake --build build
+[GoogleTest](https://github.com/google/googletest) is used as the unit testing framework. So you will
+need to have GoogleTest installed on your system for CMake to pick-up as a package.
+```
+cmake -DBUILD_TESTS=ON . -Bbuild
+cmake --build build
+```
 
 ## rISA handler functions
 rISA allows for the user to define their own handler functions for dealing with either
@@ -74,8 +54,8 @@ Memory-Mapped I/O (MMIO), Environment Calls (Env), Interrupts (Int), Initializat
     void risaExitHandler(rv32iHart *cpu);
 ```
 The user can define their own handler functions separately, compile them to a dynamic library, then pass the
-dynamic library as a command-line argument to rISA. This repo comes with example handlers 
-(in the `examples/example_handlers` folder) which serves as a good example of how a user can write their own 
+dynamic library as a command-line argument to rISA. This repo comes with example handlers
+(in the `examples/example_handlers` folder) which serves as a good example of how a user can write their own
 handlers as well as identify which header files are needed.
 
 The cpu simulation object also contains an opaque user-data pointer:
@@ -84,4 +64,4 @@ The cpu simulation object also contains an opaque user-data pointer:
 ```
 
 The user-provided handler function(s) library will be able to utilize this data pointer to store
-runtime information to the cpu object via this pointer (e.g. MMIO address ranges, trace info, etcetera). 
+runtime information to the cpu object via this pointer (e.g. MMIO address ranges, trace info, etcetera).

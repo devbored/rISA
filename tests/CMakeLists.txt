@@ -26,4 +26,5 @@ endif()
 target_link_libraries(risa_tests
     GTest::gtest
     GTest::gtest_main
+    ${CMAKE_DL_LIBS}
 )

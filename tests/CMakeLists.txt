@@ -15,7 +15,9 @@ target_include_directories(risa_tests PRIVATE
     ${CMAKE_SOURCE_DIR}
     ${CMAKE_SOURCE_DIR}/external/minigdbstub
 )
-target_compile_options(risa_tests PRIVATE "--std=c++11")
+set_target_properties(risa_tests PROPERTIES
+    CXX_STANDARD 11
+)
 if (MSVC)
     target_compile_options(risa_tests PRIVATE "/W4")
 else()

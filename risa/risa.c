@@ -13,11 +13,25 @@ static SIGINT_RET_TYPE sigintHandler(SIGINT_PARAM sig) {
     SIGINT_RET;
 }
 
-void defaultMmioHandler(rv32iHart *cpu)  { return; }
-void defaultIntHandler(rv32iHart *cpu)   { return; }
-void defaultEnvHandler(rv32iHart *cpu)   { return; }
-void defaultExitHandler(rv32iHart *cpu)  { return; }
-void defaultInitHandler(rv32iHart *cpu)  { return; }
+void defaultMmioHandler(rv32iHart_t *cpu)  { return; }
+void defaultIntHandler(rv32iHart_t *cpu)   { return; }
+void defaultEnvHandler(rv32iHart_t *cpu)   { return; }
+void defaultExitHandler(rv32iHart_t *cpu)  { return; }
+void defaultInitHandler(rv32iHart_t *cpu)  { return; }
+const void *g_defaultHandlerTable[RISA_HANDLER_PROC_COUNT] = {
+    defaultMmioHandler,
+    defaultIntHandler,
+    defaultEnvHandler,
+    defaultExitHandler,
+    defaultInitHandler
+};
+const char *g_handlerProcNames[RISA_HANDLER_PROC_COUNT] = {
+    "risaMmioHandler",
+    "risaIntHandler",
+    "risaEnvHandler",
+    "risaInitHandler",
+    "risaExitHandler",
+};
 
 void printHelp(void) {
     printf(
@@ -26,23 +40,13 @@ void printHelp(void) {
         "\n\n"
         "OPTIONS:\n"
     );
-    miniargparseOpt *tmp = miniargparseOptlistController(NULL);
-    while (tmp != NULL) {
-        if (tmp->infoBits.hasValue) {
-            printf("  %s <value> \n  %s=<value> \n        %s\n\n",
-                tmp->shortName, tmp->longName, tmp->description);
-        }
-        else {
-            printf("  %s         \n  %s         \n        %s\n\n",
-                tmp->shortName, tmp->longName, tmp->description);
-        }
-        tmp = tmp->next;
-    }
-    printf("\n");
+    miniargparsePrint();
 }
 
-void cleanupSimulator(rv32iHart *cpu) {
-    if (cpu->pfnExitHandler != NULL)    { cpu->pfnExitHandler(cpu);    }
+void cleanupSimulator(rv32iHart_t *cpu) {
+    if (cpu->handlerProcs[RISA_EXIT_HANDLER_PROC] != NULL) {
+        cpu->handlerProcs[RISA_EXIT_HANDLER_PROC](cpu);
+    }
     if (cpu->virtMem        != NULL)    { free(cpu->virtMem);          }
     if (cpu->handlerData    != NULL)    { free(cpu->handlerData);      }
     if (cpu->handlerLib     != NULL)    { CLOSE_LIB(cpu->handlerLib);  }
@@ -53,7 +57,7 @@ void cleanupSimulator(rv32iHart *cpu) {
     );
 }
 
-int loadProgram(rv32iHart *cpu) {
+int loadProgram(rv32iHart_t *cpu) {
     FILE* binFile;
     OPEN_FILE(binFile, cpu->programFile, "rb");
     if (binFile == NULL) {
@@ -75,7 +79,7 @@ int loadProgram(rv32iHart *cpu) {
     return 0;
 }
 
-int setupSimulator(int argc, char **argv, rv32iHart *cpu) {
+int setupSimulator(int argc, char **argv, rv32iHart_t *cpu) {
     int err = 0;
 
     // Define opts
@@ -143,30 +147,12 @@ int setupSimulator(int argc, char **argv, rv32iHart *cpu) {
             "        Using default default handlers instead.\n", handlerLib.value
         );
     }
-    cpu->pfnMmioHandler = (pfnMmioHandler)(uintptr_t)LOAD_SYM(cpu->handlerLib, "risaMmioHandler");
-    cpu->pfnIntHandler  = (pfnIntHandler)(uintptr_t)LOAD_SYM(cpu->handlerLib,  "risaIntHandler");
-    cpu->pfnEnvHandler  = (pfnEnvHandler)(uintptr_t)LOAD_SYM(cpu->handlerLib,  "risaEnvHandler");
-    cpu->pfnInitHandler = (pfnInitHandler)(uintptr_t)LOAD_SYM(cpu->handlerLib, "risaInitHandler");
-    cpu->pfnExitHandler = (pfnExitHandler)(uintptr_t)LOAD_SYM(cpu->handlerLib, "risaExitHandler");
-    if (cpu->pfnMmioHandler == NULL) {
-        cpu->pfnMmioHandler = defaultMmioHandler;
-        printf("[rISA]: INFO - Using stub for risaMmioHandler.\n");
-    }
-    if (cpu->pfnIntHandler == NULL) {
-        cpu->pfnIntHandler  = defaultIntHandler;
-        printf("[rISA]: INFO - Using stub for risaIntHandle.\n");
-    }
-    if (cpu->pfnEnvHandler == NULL) {
-        cpu->pfnEnvHandler  = defaultEnvHandler;
-        printf("[rISA]: INFO - Using stub for risaEnvHandler.\n");
-    }
-    if (cpu->pfnInitHandler == NULL) {
-        cpu->pfnInitHandler = defaultInitHandler;
-        printf("[rISA]: INFO - Using stub for risaInitHandler.\n");
-    }
-    if (cpu->pfnExitHandler == NULL) {
-        cpu->pfnExitHandler = defaultExitHandler;
-        printf("[rISA]: INFO - Using stub for risaExitHandler.\n");
+    for (int i=0; i<RISA_HANDLER_PROC_COUNT; ++i) {
+        cpu->handlerProcs[i] = LOAD_SYM(cpu->handlerLib, g_handlerProcNames[i]);
+        if (cpu->handlerProcs[i] == NULL) {
+            cpu->handlerProcs[i] = g_defaultHandlerTable[i];
+            printf("[rISA]: INFO - Using stub for %s.\n", g_handlerProcNames[i]);
+        }
     }
     if (cpu->intPeriodVal == 0) {
         cpu->intPeriodVal = DEFAULT_INT_PERIOD;
@@ -200,11 +186,11 @@ int setupSimulator(int argc, char **argv, rv32iHart *cpu) {
     // Init the PC value
     cpu->pc = cpu->virtMem[START_PC_ADDR_OFFSET];
 
-    cpu->pfnInitHandler(cpu);
+    cpu->handlerProcs[RISA_INIT_HANDLER_PROC](cpu);
     return 0;
 }
 
-int executionLoop(rv32iHart *cpu) {
+int executionLoop(rv32iHart_t *cpu) {
     cpu->startTime = clock();
     SIGINT_REGISTER(cpu, sigintHandler);
     for (;;) {
@@ -397,7 +383,7 @@ int executionLoop(rv32iHart *cpu) {
                     }
                     case FENCE: { // FENCE - order device I/O and memory accesses
                         TRACE_FEN((cpu), "fence");
-                        cpu->pfnEnvHandler(cpu);
+                        cpu->handlerProcs[RISA_ENV_HANDLER_PROC](cpu);
                         break;
                     }
                     // Catch environment-type instructions
@@ -407,12 +393,12 @@ int executionLoop(rv32iHart *cpu) {
                         switch ((ItypeInstructions)cpu->ID) {
                             case ECALL:  { // ECALL - request a syscall
                                 TRACE_E((cpu), "ecall");
-                                cpu->pfnEnvHandler(cpu);
+                                cpu->handlerProcs[RISA_ENV_HANDLER_PROC](cpu);
                                 break;
                             }
                             case EBREAK: { // EBREAK - halt processor execution, transfer control to debugger
                                 TRACE_E((cpu), "ebreak");
-                                cpu->pfnEnvHandler(cpu);
+                                cpu->handlerProcs[RISA_ENV_HANDLER_PROC](cpu);
                                 break;
                             }
                             default: { // Invalid instruction
@@ -458,7 +444,7 @@ int executionLoop(rv32iHart *cpu) {
                         break;
                     }
                 }
-                cpu->pfnMmioHandler(cpu);
+                cpu->handlerProcs[RISA_MMIO_HANDLER_PROC](cpu);
                 break;
             }
             case B: {
@@ -573,7 +559,7 @@ int executionLoop(rv32iHart *cpu) {
         }
 
         if ((cpu->cycleCounter % cpu->intPeriodVal) == 0) {
-            cpu->pfnIntHandler(cpu);
+            cpu->handlerProcs[RISA_INT_HANDLER_PROC](cpu);
         }
         cpu->pc += 4;
         cpu->regFile[0] = 0;

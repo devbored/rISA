@@ -4,7 +4,7 @@
 int main(int argc, char** argv) {
     // Init simulator
     int err = 0;
-    rv32iHart cpu = {0};
+    rv32iHart_t cpu = {0};
     err = setupSimulator(argc, argv, &cpu);
     if (err) {
         return err;

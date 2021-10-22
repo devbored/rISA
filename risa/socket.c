@@ -14,7 +14,7 @@ typedef int socklen_t;
 #include "socket.h"
 
 
-void stopServer(rv32iHart *cpu) {
+void stopServer(rv32iHart_t *cpu) {
 #ifdef _WIN32
     shutdown(cpu->gdbFields.socketFd, SD_BOTH);
     closesocket(cpu->gdbFields.socketFd);
@@ -25,7 +25,7 @@ void stopServer(rv32iHart *cpu) {
 #endif
 }
 
-int startServer(rv32iHart *cpu){
+int startServer(rv32iHart_t *cpu){
 #ifdef _WIN32
     WSADATA wsaData;
     if (WSAStartup(MAKEWORD(2, 0), &wsaData) != 0) {

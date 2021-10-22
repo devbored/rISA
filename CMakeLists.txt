@@ -53,7 +53,7 @@ add_subdirectory(${CMAKE_SOURCE_DIR}/examples/test_handler)
 # Example RISC-V C program uses separate cross-compiler
 # (Needs to run as separate CMake command due to this)
 if(BUILD_RISCV_PROGRAM)
-    if(NOT DEFINED ${CROSS_GENERATOR})
+    if(NOT DEFINED CROSS_GENERATOR)
         set(CROSS_GENERATOR "Unix Makefiles")
     endif()
     add_custom_target(TEST_PROG_C ALL

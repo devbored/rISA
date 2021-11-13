@@ -18,14 +18,15 @@ target_include_directories(risa_tests PRIVATE
 set_target_properties(risa_tests PROPERTIES
     CXX_STANDARD 11
 )
-if (MSVC)
+if (WIN32)
     target_compile_options(risa_tests PRIVATE "/W4")
+    target_link_libraries(risa_tests PRIVATE wsock32 ws2_32)
 else()
     target_compile_options(risa_tests PRIVATE -Wall)
     target_compile_options(risa_tests PRIVATE -pedantic)
     target_compile_options(risa_tests PRIVATE -Wno-unused-function)
 endif()
-target_link_libraries(risa_tests
+target_link_libraries(risa_tests PRIVATE
     GTest::gtest
     GTest::gtest_main
     ${CMAKE_DL_LIBS}

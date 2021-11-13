@@ -26,6 +26,9 @@ target_link_libraries(
     risa
     ${CMAKE_DL_LIBS}
 )
+if (WIN32)
+    target_link_libraries(risa PRIVATE wsock32 ws2_32)
+endif()
 
 target_include_directories(
     risa

@@ -1,5 +1,4 @@
 #ifdef _WIN32
-#pragma comment(lib, "Ws2_32.lib")
 #include <winsock2.h>
 typedef int socklen_t;
 #define SOCKET_ERR INVALID_SOCKET

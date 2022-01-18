@@ -15,7 +15,7 @@ A simple RISC-V ISA Simulator.
 - CMake (v3.10 or higher)
 - Some compatible CMake Generator (e.g. GNU Make, Visual Studio, Ninja)
 - Some ANSI C compiler (C99 or higher)
-    - A RISC-V compiler/cross-compiler for `test_program` (Optional)
+    - A generic ELF/Newlib GCC RISC-V compiler/cross-compiler toolcahin for test programs (Optional)
 - GoogleTest - for building unit tests (Optional)
     - C++11 or newer (Optional)
 
@@ -29,10 +29,18 @@ If you want to only build rISA:
     $ cmake . -Bbuild
     $ cmake --build build
 
-If you want to build rISA with the example RISC-V `test_program`:
+If you want to build rISA with the example RISC-V programs:
 
-    $ cmake -DBUILD_RISCV_PROGRAM=ON . -Bbuild
+    $ cmake -DBUILD_PROGS=ON . -Bbuild
     $ cmake --build build
+
+There is a `${CROSS_GEN}` CMake config variable that one can specify to provide a build tool type for
+the cross-compile (`Ninja` is the default if not set). Another CMake config variable `${RISCV_TC_TRIPLET}` can be
+specified to define the GCC prefix triple for the toolchain (`riscv64-unknown-elf` is the default if not set).
+
+Example:
+
+    $ cmake -DCROSS_GEN="Unix Makefiles" -DRISCV_TC_TRIPLET=riscv-none-embed ...
 
 ## Building rISA with unit tests
 [GoogleTest](https://github.com/google/googletest) is used as the unit testing framework. So you will
@@ -55,8 +63,7 @@ Memory-Mapped I/O (MMIO), Environment Calls (Env), Interrupts (Int), Initializat
 ```
 The user can define their own handler functions separately, compile them to a dynamic library, then pass the
 dynamic library as a command-line argument to rISA. This repo comes with example handlers
-(in the `examples/example_handlers` folder) which serves as a good example of how a user can write their own
-handlers as well as identify which header files are needed.
+(in the `examples/test_risa_handler` folder).
 
 The cpu simulation object also contains an opaque user-data pointer:
 ```c

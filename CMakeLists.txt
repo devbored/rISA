@@ -4,12 +4,18 @@ project(risa)
 set(RISA_DIR ${CMAKE_SOURCE_DIR}/risa)
 set(GDBSTUB_DIR ${CMAKE_SOURCE_DIR}/external/minigdbstub)
 set(ARGPARSE_DIR ${CMAKE_SOURCE_DIR}/external/miniargparse)
-set(TEST_HANDLER_DIR ${CMAKE_SOURCE_DIR}/examples/test_handler)
-set(TEST_C_PROG_DIR ${CMAKE_SOURCE_DIR}/examples/test_program)
+set(HANDLER_DIR ${CMAKE_SOURCE_DIR}/examples/risa_handler)
+set(SIMPLE_DIR ${CMAKE_SOURCE_DIR}/examples/program_simple)
+set(SIMPLE_DIR_B ${CMAKE_BINARY_DIR}/examples/program_simple)
 set(TESTS_DIR ${CMAKE_SOURCE_DIR}/tests)
-set(CROSS_GENERATOR)
+
+# CMake generator for RISC-V cross-compiler
+set(CROSS_GEN)
+# RISC-V GCC toolchain prefix triplet
+set(RISCV_TC_TRIPLET)
+
 option(BUILD_TESTS "Build unit tests" OFF)
-option(BUILD_RISCV_PROGRAM "Build example RISC-V program" OFF)
+option(BUILD_PROGS "Build example RISC-V programs" OFF)
 option(GDBLOG "Build with gdb packet log printing" OFF)
 if(GDBLOG)
     add_definitions(-DGDBLOG)
@@ -51,16 +57,19 @@ set_property(
 if(BUILD_TESTS)
     add_subdirectory(${CMAKE_SOURCE_DIR}/tests)
 endif(BUILD_TESTS)
-add_subdirectory(${CMAKE_SOURCE_DIR}/examples/test_handler)
+add_subdirectory(${CMAKE_SOURCE_DIR}/examples/risa_handler)
 
 # Example RISC-V C program uses separate cross-compiler
 # (Needs to run as separate CMake command due to this)
-if(BUILD_RISCV_PROGRAM)
-    if(NOT DEFINED CROSS_GENERATOR)
-        set(CROSS_GENERATOR "Unix Makefiles")
+if(BUILD_PROGS)
+    if(NOT DEFINED CROSS_GEN)
+        set(CROSS_GEN "Ninja")
+    endif()
+    if(NOT DEFINED RISCV_TC_TRIPLET)
+        set(RISCV_TC_TRIPLET "riscv64-unknown-elf")
     endif()
     add_custom_target(TEST_PROG_C ALL
-        COMMAND cmake ${TEST_C_PROG_DIR} -B${CMAKE_BINARY_DIR}/examples/test_program -G ${CROSS_GENERATOR}
-        COMMAND cmake --build ${CMAKE_BINARY_DIR}/examples/test_program
+        COMMAND cmake ${SIMPLE_DIR} -B${SIMPLE_DIR_B} -G ${CROSS_GEN} -DRISCV_TC_TRIPLET=${RISCV_TC_TRIPLET}
+        COMMAND cmake --build ${SIMPLE_DIR_B}
     )
-endif(BUILD_RISCV_PROGRAM)
+endif(BUILD_PROGS)

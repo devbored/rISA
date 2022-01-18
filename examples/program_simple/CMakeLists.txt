@@ -1,9 +1,8 @@
 cmake_minimum_required(VERSION 3.10)
 
 set(CMAKE_SYSTEM_NAME      Generic)
-set(CROSS_COMPILE          riscv64-unknown-elf-)
-set(CMAKE_C_COMPILER       "${CROSS_COMPILE}gcc")
-set(CMAKE_OBJCOPY          "${CROSS_COMPILE}objcopy")
+set(CMAKE_C_COMPILER       "${RISCV_TC_TRIPLET}-gcc")
+set(CMAKE_OBJCOPY          "${RISCV_TC_TRIPLET}-objcopy")
 set(CMAKE_C_COMPILER_WORKS TRUE)
 set(CMAKE_CXX_COMPILER_WORKS TRUE)
 
@@ -23,12 +22,12 @@ set(LINKER_SCRIPT          "${CMAKE_SOURCE_DIR}/../../ldscripts/risalriscv.x")
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -T${LINKER_SCRIPT}")
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-Map=sections.map")
 
-project(c_example)
-add_executable(test_program test_program.c)
+project(program_simple)
+add_executable(program_simple program_simple.c)
 
 add_custom_command(
-    TARGET test_program POST_BUILD
-    COMMAND ${CMAKE_OBJCOPY} -O binary test_program test_program.hex
+    TARGET program_simple POST_BUILD
+    COMMAND ${CMAKE_OBJCOPY} -O binary program_simple program_simple.hex
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     COMMENT "Building example programs"
 )

@@ -220,22 +220,6 @@ int executionLoop(rv32iHart_t *cpu) {
                 cpu->ID = (cpu->instFields.funct7 << 10) | (cpu->instFields.funct3 << 7) | cpu->instFields.opcode;
                 // Execute
                 switch ((RtypeInstructions)cpu->ID) {
-                    case SLLI: { // Shift left logical by immediate (i.e. rs2 is shamt)
-                        TRACE_R((cpu), "slli");
-                        cpu->regFile[cpu->instFields.rd] = cpu->regFile[cpu->instFields.rs1] << cpu->instFields.rs2;
-                        break;
-                    }
-                    case SRLI: { // Shift right logical by immediate (i.e. rs2 is shamt)
-                        TRACE_R((cpu), "srli");
-                        cpu->regFile[cpu->instFields.rd] = cpu->regFile[cpu->instFields.rs1] >> cpu->instFields.rs2;
-                        break;
-                    }
-                    case SRAI: { // Shift right arithmetic by immediate (i.e. rs2 is shamt)
-                        TRACE_R((cpu), "srai");
-                        cpu->regFile[cpu->instFields.rd] =
-                            (u32)((s32)cpu->regFile[cpu->instFields.rs1] >> cpu->instFields.rs2);
-                        break;
-                    }
                     case ADD:  { // Addition
                         TRACE_R((cpu), "add");
                         cpu->regFile[cpu->instFields.rd] =
@@ -313,6 +297,22 @@ int executionLoop(rv32iHart_t *cpu) {
                 cpu->targetAddress = cpu->regFile[cpu->instFields.rs1] + cpu->immFinal;
                 // Execute
                 switch ((ItypeInstructions)cpu->ID) {
+                    case SLLI: { // Shift left logical by immediate (i.e. rs2 is shamt)
+                        TRACE_I((cpu), "slli");
+                        cpu->regFile[cpu->instFields.rd] = cpu->regFile[cpu->instFields.rs1] << cpu->instFields.rs2;
+                        break;
+                    }
+                    case SRLI: { // Shift right logical by immediate (i.e. rs2 is shamt)
+                        TRACE_I((cpu), "srli");
+                        cpu->regFile[cpu->instFields.rd] = cpu->regFile[cpu->instFields.rs1] >> cpu->instFields.rs2;
+                        break;
+                    }
+                    case SRAI: { // Shift right arithmetic by immediate (i.e. rs2 is shamt)
+                        TRACE_I((cpu), "srai");
+                        cpu->regFile[cpu->instFields.rd] =
+                            (u32)((s32)cpu->regFile[cpu->instFields.rs1] >> cpu->instFields.rs2);
+                        break;
+                    }
                     case JALR:  { // Jump and link register
                         TRACE_I((cpu), "jalr");
                         cpu->regFile[cpu->instFields.rd] = cpu->pc + 4;

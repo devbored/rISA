@@ -178,9 +178,6 @@ struct rv32iHart{
 // --- RV32I Instructions ---
 typedef enum {
     //     funct7         funct3       op
-    SLLI = (0x0  << 10) | (0x1 << 7) | (0x13),
-    SRLI = (0x0  << 10) | (0x5 << 7) | (0x13),
-    SRAI = (0x20 << 10) | (0x5 << 7) | (0x13),
     ADD  = (0x0  << 10) | (0x0 << 7) | (0x33),
     SUB  = (0x20 << 10) | (0x0 << 7) | (0x33),
     SLL  = (0x0  << 10) | (0x1 << 7) | (0x33),
@@ -209,8 +206,11 @@ typedef enum {
     ANDI   = (0x7 << 7) | (0x13),
     FENCE  = (0x0 << 7) | (0xf),
     ECALL  = (0x0 << 7) | (0x73),
-    //       imm           funct3       op
-    EBREAK = (0x1 << 20) | (0x0 << 7) | (0x73)
+    //        imm             funct3       op
+    SLLI    = (0x0  << 10)  | (0x1 << 7) | (0x13),
+    SRLI    = (0x0  << 10)  | (0x5 << 7) | (0x13),
+    SRAI    = (0x20 << 10)  | (0x5 << 7) | (0x13),
+    EBREAK  = (0x1 << 20)   | (0x0 << 7) | (0x73)
 } ItypeInstructions;
 
 typedef enum {

@@ -1,23 +1,25 @@
 #ifndef RISA_H
 #define RISA_H
 
-#include <stdint.h>
+#include <time.h>
 #include <errno.h>
 #include <stdio.h>
-#include <time.h>
+#include <stdint.h>
+#include <string.h>
 #ifdef _WIN32
 #include <windows.h>
 #else
 #include <dlfcn.h>
 #endif
 
-typedef uint8_t  u8;
-typedef uint16_t u16;
-typedef uint32_t u32;
-typedef uint64_t u64;
-typedef int8_t  s8;
-typedef int16_t s16;
-typedef int32_t s32;
+// Generic log macros
+#define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
+#define LOG_I(msg, ...) \
+    printf("[rISA - Info   ]: | %s:%-12d |%20s : " msg, __FILENAME__, __LINE__, __func__, ##__VA_ARGS__)
+#define LOG_W(msg, ...) \
+    printf("[rISA - Warning]: | %s:%-12d |%20s : " msg, __FILENAME__, __LINE__, __func__, ##__VA_ARGS__)
+#define LOG_E(msg, ...) \
+    printf("[rISA - Error  ]: | %s:%-12d |%20s : " msg, __FILENAME__, __LINE__, __func__, ##__VA_ARGS__)
 
 #ifdef _WIN32 // --- windows
 #define LOAD_LIB(libpath)               LoadLibrary(libpath)
@@ -35,7 +37,7 @@ typedef int32_t s32;
 #define SIGINT_RET                      return TRUE
 #define SIGINT_REGISTER(cpu, function)  do {                                                                    \
                                             if (!SetConsoleCtrlHandler((PHANDLER_ROUTINE)function,TRUE)) {      \
-                                                printf("[rISA]: Error. Couldn't register sigint handler.\n");   \
+                                                LOG_E("Error. Couldn't register sigint handler.\n");            \
                                                 cleanupSimulator(cpu);                                          \
                                                 return ECANCELED;                                               \
                                             }                                                                   \
@@ -54,7 +56,7 @@ typedef int32_t s32;
 #define SIGINT_RET                      do {} while(0)
 #define SIGINT_REGISTER(cpu, function)  do {                                                                    \
                                             if ((signal(SIGINT,function) == SIG_ERR)) {                         \
-                                                printf("[rISA]: Error. Couldn't register sigint handler.\n");   \
+                                                LOG_E("Couldn't register sigint handler.\n");                   \
                                                 cleanupSimulator(cpu);                                          \
                                                 return ECANCELED;                                               \
                                             }                                                                   \
@@ -64,9 +66,9 @@ typedef int32_t s32;
 #define DEFAULT_VIRT_MEM_SIZE   16384 // 16KB
 #define DEFAULT_INT_PERIOD      500
 
-#define ACCESS_MEM_W(virtMem, offset) (*(u32*)((u8*)virtMem + (offset)))
-#define ACCESS_MEM_H(virtMem, offset) (*(u16*)((u8*)virtMem + (offset)))
-#define ACCESS_MEM_B(virtMem, offset) (*(u8*)((u8*)virtMem + (offset)))
+#define ACCESS_MEM_W(virtMem, offset) (*(u32*)((u8*)virtMem + offset))
+#define ACCESS_MEM_H(virtMem, offset) (*(u16*)((u8*)virtMem + offset))
+#define ACCESS_MEM_B(virtMem, offset) (*(u8* )((u8*)virtMem + offset))
 
 #define GET_BITS(var, pos, width)   ((var & ((((1 << width) - 1) << pos))) >> pos)
 #define GET_OPCODE(instr)           GET_BITS(instr, 0, 7)
@@ -90,6 +92,14 @@ typedef int32_t s32;
 #define GET_SUCC(instr)             GET_BITS(instr, 20, 4)
 #define GET_PRED(instr)             GET_BITS(instr, 24, 4)
 #define GET_FM(instr)               GET_BITS(instr, 28, 4)
+
+typedef uint8_t     u8;
+typedef uint16_t    u16;
+typedef uint32_t    u32;
+typedef uint64_t    u64;
+typedef int8_t      s8;
+typedef int16_t     s16;
+typedef int32_t     s32;
 
 typedef struct {
     u32 imm11_0  : 12;
@@ -172,6 +182,7 @@ struct rv32iHart{
     GdbFields           gdbFields;
     LIB_HANDLE          handlerLib;
     void                (*handlerProcs[RISA_HANDLER_PROC_COUNT])(rv32iHart_t *);
+    void                (*cleanupSimulator)(rv32iHart_t *);
     void                *handlerData;
 };
 
@@ -249,6 +260,7 @@ extern const InstFormats g_opcodeToFormat[128];
 // Default rISA vector table offsets
 typedef enum {
     SP_ADDR_OFFSET,
+    GP_ADDR_OFFSET,
     START_PC_ADDR_OFFSET
 } defaultRisaVecTbl;
 
@@ -289,11 +301,15 @@ typedef enum {
     REGISTER_COUNT
 } regfileAliases;
 
+// Syscalls
+#define	syscall_exit            1
+#define	syscall_read            4
+#define	syscall_write           5
 
 // Tracing macro with Register type syntax
 extern const char *g_regfileAliasLookup[];
 #define TRACE_R(cpu, name) do { if (cpu->opts.o_tracePrintEnable) {                             \
-    fprintf(stderr, "[rISA]: | %-10d cycles | %08x:  0x%08x    %s %s, %s, %s\n",                \
+    fprintf(stderr, "[rISA - tracing]: | %-12d cycles | %08x:  0x%08x    %s %s, %s, %s\n",      \
         cpu->cycleCounter,                                                                      \
         cpu->pc,                                                                                \
         cpu->virtMem[cpu->pc/4],                                                                \
@@ -305,7 +321,7 @@ extern const char *g_regfileAliasLookup[];
 
 // Tracing macro with Immediate type syntax
 #define TRACE_I(cpu, name) do { if (cpu->opts.o_tracePrintEnable) {                             \
-    fprintf(stderr, "[rISA]: | %-10d cycles | %08x:  0x%08x    %s %s, %s, %d\n",                \
+    fprintf(stderr, "[rISA - tracing]: | %-12d cycles | %08x:  0x%08x    %s %s, %s, %d\n",      \
         cpu->cycleCounter,                                                                      \
         cpu->pc,                                                                                \
         cpu->virtMem[cpu->pc/4],                                                                \
@@ -317,7 +333,7 @@ extern const char *g_regfileAliasLookup[];
 
 // Tracing macro with Load type syntax
 #define TRACE_L(cpu, name) do { if (cpu->opts.o_tracePrintEnable) {                             \
-    fprintf(stderr, "[rISA]: | %-10d cycles | %08x:  0x%08x    %s %s, %d(%s)\n",                \
+    fprintf(stderr, "[rISA - tracing]: | %-12d cycles | %08x:  0x%08x    %s %s, %d(%s)\n",      \
         cpu->cycleCounter,                                                                      \
         cpu->pc,                                                                                \
         cpu->virtMem[cpu->pc/4],                                                                \
@@ -329,7 +345,7 @@ extern const char *g_regfileAliasLookup[];
 
 // Tracing macro with Store type syntax
 #define TRACE_S(cpu, name) do { if (cpu->opts.o_tracePrintEnable) {                             \
-    fprintf(stderr, "[rISA]: | %-10d cycles | %08x:  0x%08x    %s %s, %d(%s)\n",                \
+    fprintf(stderr, "[rISA - tracing]: | %-12d cycles | %08x:  0x%08x    %s %s, %d(%s)\n",      \
         cpu->cycleCounter,                                                                      \
         cpu->pc,                                                                                \
         cpu->virtMem[cpu->pc/4],                                                                \
@@ -341,7 +357,7 @@ extern const char *g_regfileAliasLookup[];
 
 // Tracing macro with Upper type syntax
 #define TRACE_U(cpu, name) do { if (cpu->opts.o_tracePrintEnable) {                             \
-    fprintf(stderr, "[rISA]: | %-10d cycles | %08x:  0x%08x    %s %s, 0x%08x\n",                \
+    fprintf(stderr, "[rISA - tracing]: | %-12d cycles | %08x:  0x%08x    %s %s, 0x%08x\n",      \
         cpu->cycleCounter,                                                                      \
         cpu->pc,                                                                                \
         cpu->virtMem[cpu->pc/4],                                                                \
@@ -352,7 +368,7 @@ extern const char *g_regfileAliasLookup[];
 
 // Tracing macro with Jump type syntax
 #define TRACE_J(cpu, name) do { if (cpu->opts.o_tracePrintEnable) {                             \
-    fprintf(stderr, "[rISA]: | %-10d cycles | %08x:  0x%08x    %s %s, %d\n",                    \
+    fprintf(stderr, "[rISA - tracing]: | %-12d cycles | %08x:  0x%08x    %s %s, %d\n",          \
         cpu->cycleCounter,                                                                      \
         cpu->pc,                                                                                \
         cpu->virtMem[cpu->pc/4],                                                                \
@@ -363,7 +379,7 @@ extern const char *g_regfileAliasLookup[];
 
 // Tracing macro with Branch type syntax
 #define TRACE_B(cpu, name) do { if (cpu->opts.o_tracePrintEnable) {                             \
-    fprintf(stderr, "[rISA]: | %-10d cycles | %08x:  0x%08x    %s %s, %s, %d\n",                \
+    fprintf(stderr, "[rISA - tracing]: | %-12d cycles | %08x:  0x%08x    %s %s, %s, %d\n",      \
         cpu->cycleCounter,                                                                      \
         cpu->pc,                                                                                \
         cpu->virtMem[cpu->pc/4],                                                                \
@@ -374,20 +390,20 @@ extern const char *g_regfileAliasLookup[];
     } } while(0)
 
 // Tracing macro for FENCE
-#define TRACE_FEN(cpu, name) do { if (cpu->opts.o_tracePrintEnable) {                           \
-    fprintf(stderr, "[rISA]: | %-10d cycles | %08x:  0x%08x    %s fm:%d, pred:%d, succ:%d\n",   \
-        cpu->cycleCounter,                                                                      \
-        cpu->pc,                                                                                \
-        cpu->virtMem[cpu->pc/4],                                                                \
-        name,                                                                                   \
-        cpu->immFields.fm,                                                                      \
-        cpu->immFields.pred,                                                                    \
-        cpu->immFields.succ);                                                                   \
+#define TRACE_FEN(cpu, name) do { if (cpu->opts.o_tracePrintEnable) {                                   \
+    fprintf(stderr, "[rISA - tracing]: | %-12d cycles | %08x:  0x%08x    %s fm:%d, pred:%d, succ:%d\n", \
+        cpu->cycleCounter,                                                                              \
+        cpu->pc,                                                                                        \
+        cpu->virtMem[cpu->pc/4],                                                                        \
+        name,                                                                                           \
+        cpu->immFields.fm,                                                                              \
+        cpu->immFields.pred,                                                                            \
+        cpu->immFields.succ);                                                                           \
     } } while(0)
 
 // Tracing macro for Environment type syntax
 #define TRACE_E(cpu, name) do { if (cpu->opts.o_tracePrintEnable) {                             \
-    fprintf(stderr, "[rISA]: | %-10d cycles | %08x:  0x%08x    %s\n",                           \
+    fprintf(stderr, "[rISA - tracing]: | %-12d cycles | %08x:  0x%08x    %s\n",                 \
         cpu->cycleCounter,                                                                      \
         cpu->pc,                                                                                \
         cpu->virtMem[cpu->pc/4],                                                                \

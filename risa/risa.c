@@ -13,11 +13,11 @@ static SIGINT_RET_TYPE sigintHandler(SIGINT_PARAM sig) {
     SIGINT_RET;
 }
 
-void defaultMmioHandler(rv32iHart_t *cpu)  { return; }
-void defaultIntHandler(rv32iHart_t *cpu)   { return; }
-void defaultEnvHandler(rv32iHart_t *cpu)   { return; }
-void defaultExitHandler(rv32iHart_t *cpu)  { return; }
-void defaultInitHandler(rv32iHart_t *cpu)  { return; }
+void defaultMmioHandler(rv32iHart_t *cpu);
+void defaultIntHandler(rv32iHart_t *cpu);
+void defaultEnvHandler(rv32iHart_t *cpu);
+void defaultExitHandler(rv32iHart_t *cpu);
+void defaultInitHandler(rv32iHart_t *cpu);
 const void *g_defaultHandlerTable[RISA_HANDLER_PROC_COUNT] = {
     defaultMmioHandler,
     defaultIntHandler,
@@ -34,9 +34,9 @@ const char *g_handlerProcNames[RISA_HANDLER_PROC_COUNT] = {
 };
 
 void printHelp(void) {
-    printf(
-        "[rISA]:    Usage: risa [OPTIONS] <program_binary>\n"
-        "           Example: risa -m 1024 my_riscv_program.hex"
+    printf("\n"
+        "Usage: risa [OPTIONS] <program_binary>\n"
+        "Example: risa -m 1024 my_riscv_program.hex"
         "\n\n"
         "OPTIONS:\n"
     );
@@ -50,9 +50,8 @@ void cleanupSimulator(rv32iHart_t *cpu) {
     if (cpu->virtMem        != NULL)    { free(cpu->virtMem);          }
     if (cpu->handlerData    != NULL)    { free(cpu->handlerData);      }
     if (cpu->handlerLib     != NULL)    { CLOSE_LIB(cpu->handlerLib);  }
-    printf(
-        "[rISA]: Simulator stopping.\n"
-        "        Simulation time elapsed: (%f seconds).\n",
+    printf("\n");
+    LOG_I("Simulator stopping - time elapsed: (%f seconds).\n",
         ((double)(cpu->endTime - cpu->startTime)) / CLOCKS_PER_SEC
     );
 }
@@ -61,14 +60,14 @@ int loadProgram(rv32iHart_t *cpu) {
     FILE* binFile;
     OPEN_FILE(binFile, cpu->programFile, "rb");
     if (binFile == NULL) {
-        printf("[rISA]: ERROR - Could not open file <%s>.\n", cpu->programFile);
+        LOG_E("Could not open file [ %s ].\n", cpu->programFile);
         printHelp();
         cleanupSimulator(cpu);
         return EIO;
     }
     for (int i=0; feof(binFile) == 0; ++i) {
         if (i >= (cpu->virtMemSize / sizeof(u32))) {
-            printf("[rISA]: ERROR - Could not fit <%s> in simulator's virtual memory.\n", cpu->programFile);
+            LOG_E("Could not fit <%s> in simulator's virtual memory.\n", cpu->programFile);
             fclose(binFile);
             cleanupSimulator(cpu);
             return ENOMEM;
@@ -81,6 +80,7 @@ int loadProgram(rv32iHart_t *cpu) {
 
 int setupSimulator(int argc, char **argv, rv32iHart_t *cpu) {
     int err = 0;
+    cpu->cleanupSimulator = cleanupSimulator;
 
     // Define opts
     MINIARGPARSE_OPT(virtMem, "m", "memSize", 1, "Virtual memory/IO size (in bytes) [DEFAULT=16KB].");
@@ -96,7 +96,7 @@ int setupSimulator(int argc, char **argv, rv32iHart_t *cpu) {
     // Parse the args
     int unknownOpt = miniargparseParse(argc, argv);
     if (unknownOpt > 0) {
-        printf("[rISA]: ERROR - Unknown option [ %s ] used.\n", argv[unknownOpt]);
+        LOG_E("Unknown option [ %s ] used.\n", argv[unknownOpt]);
         printHelp();
         cleanupSimulator(cpu);
         return EINVAL;
@@ -113,7 +113,7 @@ int setupSimulator(int argc, char **argv, rv32iHart_t *cpu) {
     miniargparseOpt *tmp = miniargparseOptlistController(NULL);
     while (tmp != NULL) {
         if (tmp->infoBits.hasErr) {
-            printf("[rISA]: ERROR - %s [ Option: %s ]\n", tmp->errValMsg, argv[tmp->index]);
+            LOG_E("%s [ Option: %s ]\n", tmp->errValMsg, argv[tmp->index]);
             printHelp();
             cleanupSimulator(cpu);
             return EINVAL;
@@ -124,7 +124,7 @@ int setupSimulator(int argc, char **argv, rv32iHart_t *cpu) {
     // Get needed positional arg (i.e. program binary)
     int programIndex = miniargparseGetPositionalArg(argc, argv, 0);
     if (programIndex == 0) {
-        printf("[rISA]: ERROR - No program binary given.\n");
+        LOG_E("No program binary given.\n");
         printHelp();
         cleanupSimulator(cpu);
         return EINVAL;
@@ -142,8 +142,8 @@ int setupSimulator(int argc, char **argv, rv32iHart_t *cpu) {
     // Load handler lib and syms (if given)
     cpu->handlerLib = LOAD_LIB(handlerLib.value);
     if (cpu->handlerLib == NULL) {
-        printf(
-            "[rISA]: INFO - Could not load dynamic library <%s>.\n"
+        LOG_I(
+            "Could not load dynamic library <%s>.\n"
             "        Using default default handlers instead.\n", handlerLib.value
         );
     }
@@ -151,17 +151,18 @@ int setupSimulator(int argc, char **argv, rv32iHart_t *cpu) {
         cpu->handlerProcs[i] = LOAD_SYM(cpu->handlerLib, g_handlerProcNames[i]);
         if (cpu->handlerProcs[i] == NULL) {
             cpu->handlerProcs[i] = g_defaultHandlerTable[i];
-            printf("[rISA]: INFO - Using stub for %s.\n", g_handlerProcNames[i]);
+            LOG_I("Using stub for %s.\n", g_handlerProcNames[i]);
         }
     }
+    cpu->handlerProcs[RISA_INIT_HANDLER_PROC](cpu);
     if (cpu->intPeriodVal == 0) {
         cpu->intPeriodVal = DEFAULT_INT_PERIOD;
-        printf("[rISA]: INFO - Using default value '%d' for interrupt period.\n",
+        LOG_I("Using default value '%d' for interrupt period.\n",
             DEFAULT_INT_PERIOD);
     }
     if (cpu->virtMemSize == 0) {
         cpu->virtMemSize = DEFAULT_VIRT_MEM_SIZE;
-        printf("[rISA]: INFO - Using default value '%d' for virtual memory size.\n",
+        LOG_I("Using default value '%d' for virtual memory size.\n",
             DEFAULT_VIRT_MEM_SIZE);
     }
 
@@ -171,7 +172,7 @@ int setupSimulator(int argc, char **argv, rv32iHart_t *cpu) {
 
     cpu->virtMem = (u32*)malloc(cpu->virtMemSize);
     if (cpu->virtMem == NULL) {
-        printf("[rISA]: ERROR - Could not allocate virtual memory.\n");
+        LOG_E("Could not allocate virtual memory.\n");
         cleanupSimulator(cpu);
         return ENOMEM;
     }
@@ -180,13 +181,6 @@ int setupSimulator(int argc, char **argv, rv32iHart_t *cpu) {
         return err;
     }
 
-    // Grab the end-of-stack-pointer address
-    cpu->regFile[SP] = cpu->virtMem[SP_ADDR_OFFSET];
-
-    // Init the PC value
-    cpu->pc = cpu->virtMem[START_PC_ADDR_OFFSET];
-
-    cpu->handlerProcs[RISA_INIT_HANDLER_PROC](cpu);
     return 0;
 }
 
@@ -299,18 +293,18 @@ int executionLoop(rv32iHart_t *cpu) {
                 switch ((ItypeInstructions)cpu->ID) {
                     case SLLI: { // Shift left logical by immediate (i.e. rs2 is shamt)
                         TRACE_I((cpu), "slli");
-                        cpu->regFile[cpu->instFields.rd] = cpu->regFile[cpu->instFields.rs1] << cpu->instFields.rs2;
+                        cpu->regFile[cpu->instFields.rd] = cpu->regFile[cpu->instFields.rs1] << cpu->immFinal;
                         break;
                     }
                     case SRLI: { // Shift right logical by immediate (i.e. rs2 is shamt)
                         TRACE_I((cpu), "srli");
-                        cpu->regFile[cpu->instFields.rd] = cpu->regFile[cpu->instFields.rs1] >> cpu->instFields.rs2;
+                        cpu->regFile[cpu->instFields.rd] = cpu->regFile[cpu->instFields.rs1] >> cpu->immFinal;
                         break;
                     }
                     case SRAI: { // Shift right arithmetic by immediate (i.e. rs2 is shamt)
                         TRACE_I((cpu), "srai");
                         cpu->regFile[cpu->instFields.rd] =
-                            (u32)((s32)cpu->regFile[cpu->instFields.rs1] >> cpu->instFields.rs2);
+                            (u32)((s32)cpu->regFile[cpu->instFields.rs1] >> cpu->immFinal);
                         break;
                     }
                     case JALR:  { // Jump and link register
@@ -333,8 +327,7 @@ int executionLoop(rv32iHart_t *cpu) {
                     }
                     case LW:    { // Load word
                         TRACE_L((cpu), "lw");
-                        cpu->regFile[cpu->instFields.rd] =
-                            ACCESS_MEM_W(cpu->virtMem, cpu->targetAddress);
+                        cpu->regFile[cpu->instFields.rd] = ACCESS_MEM_W(cpu->virtMem, cpu->targetAddress);
                         break;
                     }
                     case LBU:   { // Load byte (unsigned)
@@ -402,7 +395,7 @@ int executionLoop(rv32iHart_t *cpu) {
                                 break;
                             }
                             default: { // Invalid instruction
-                                printf("[rISA]: Error - (0x%08x) is an invalid instruction.\n", cpu->IF);
+                                LOG_E("(0x%08x) is an invalid instruction.\n", cpu->IF);
                                 cpu->endTime = clock();
                                 cleanupSimulator(cpu);
                                 return EILSEQ;
@@ -439,8 +432,7 @@ int executionLoop(rv32iHart_t *cpu) {
                     }
                     case SW: { // Store word
                         TRACE_S((cpu), "sw");
-                        ACCESS_MEM_W(cpu->virtMem, cpu->targetAddress) =
-                            cpu->regFile[cpu->instFields.rs2];
+                        ACCESS_MEM_W(cpu->virtMem, cpu->targetAddress) = cpu->regFile[cpu->instFields.rs2];
                         break;
                     }
                 }
@@ -544,7 +536,7 @@ int executionLoop(rv32iHart_t *cpu) {
                 break;
             }
             default: { // Invalid instruction
-                printf("[rISA]: Error - (0x%08x) is an invalid instruction.\n", cpu->IF);
+                LOG_E("(0x%08x) is an invalid instruction.\n", cpu->IF);
                 cpu->endTime = clock();
                 cleanupSimulator(cpu);
                 return EILSEQ;
@@ -552,7 +544,7 @@ int executionLoop(rv32iHart_t *cpu) {
         }
         // If PC is out-of-bounds
         if (cpu->pc > cpu->virtMemSize) {
-            printf("[rISA]: Error. Program counter is out of range.\n");
+            LOG_E("Program counter is out of range.\n");
             cpu->endTime = clock();
             cleanupSimulator(cpu);
             return EFAULT;
@@ -684,7 +676,7 @@ const InstFormats g_opcodeToFormat[128] = {
     /* 0b1100100 */ Undefined,
     /* 0b1100101 */ Undefined,
     /* 0b1100110 */ Undefined,
-    /* 0b1100111 */ J,
+    /* 0b1100111 */ I,
     /* 0b1101000 */ Undefined,
     /* 0b1101001 */ Undefined,
     /* 0b1101010 */ Undefined,

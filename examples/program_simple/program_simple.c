@@ -1,7 +1,6 @@
 #include <stdint.h>
 
 void main(void);
-void _start(void);
 
 // Define the linker script variables
 extern uint32_t _etext;
@@ -9,18 +8,6 @@ extern uint32_t _sbss;
 extern uint32_t _ebss;
 extern uint32_t _sdata;
 extern uint32_t _edata;
-extern uint32_t _sstack;
-extern uint32_t _estack;
-
-// Establish the 8 byte rISA vector table
-__attribute__ ((section(".risaVector")))
-struct s_risaVecTbl{
-    void *pInitStackPtr;
-    void *pfnStartPC;
-} risaVecTbl = {
-    .pInitStackPtr  = (void*) (&_estack),
-    .pfnStartPC     = (void*) _start
-};
 
 // Begin user code execution here
 void _start(void)
@@ -34,7 +21,7 @@ void _start(void)
     if (pre_def_vals_ptr != data_sec_ptr)
         for (; data_sec_ptr < &_edata;)
             *data_sec_ptr++ = *pre_def_vals_ptr++;
-    
+
     // Fill zeros in the .bss section
     for (bss_sec_ptr = &_sbss; bss_sec_ptr < &_ebss;)
         *bss_sec_ptr++ = 0;

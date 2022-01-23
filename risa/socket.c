@@ -35,7 +35,7 @@ int startServer(rv32iHart_t *cpu){
     struct in_addr localhostaddr;
     cpu->gdbFields.socketFd = socket(AF_INET, SOCK_STREAM, 0);
     if (cpu->gdbFields.socketFd == SOCKET_ERR) {
-        printf("[rISA]: Error. Socket creation for GDB failed.\n");
+        LOG_E("Socket creation for GDB failed.\n");
         return -1;
     }
 
@@ -49,23 +49,23 @@ int startServer(rv32iHart_t *cpu){
     serverAddr.sin_port = htons(cpu->gdbFields.serverPort);
 
     if ((bind(cpu->gdbFields.socketFd, (struct sockaddr*)&serverAddr, sizeof(serverAddr))) != 0) {
-        printf("[rISA]: Error. Socket binding for GDB failed.\n");
+        LOG_E("Socket binding for GDB failed.\n");
         stopServer(cpu);
         return -1;
     }
 
     if ((listen(cpu->gdbFields.socketFd, 5)) != 0) {
-        printf("[rISA]: Error. Socket server listening for GDB failed.\n");
+        LOG_E("Socket server listening for GDB failed.\n");
         stopServer(cpu);
         return -1;
     }
 
     // Connect to client
     int len = sizeof(client);
-    printf("\n[rISA]: GDB server listening on port %hu.\n", cpu->gdbFields.serverPort);
+    LOG_I("\nGDB server listening on port %hu.\n", cpu->gdbFields.serverPort);
     cpu->gdbFields.connectFd = accept(cpu->gdbFields.socketFd, (struct sockaddr*)&client, (socklen_t*)&len);
     if (cpu->gdbFields.connectFd < 0) {
-        printf("[rISA]: Error. Socket server accept for GDB failed.\n");
+        LOG_E("Socket server accept for GDB failed.\n");
         stopServer(cpu);
         return -1;
     }

@@ -12,8 +12,6 @@ set(CMAKE_C_FLAGS_RELEASE   "" CACHE STRING "")
 set(CMAKE_CXX_FLAGS_RELEASE "" CACHE STRING "")
 set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS} -march=rv32i")
 set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS} -mabi=ilp32")
-set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS} -nostartfiles")
-set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS} -nostdlib")
 set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS} -g")
 set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}" CACHE STRING "CFLAGS")
 set(CMAKE_ASM_FLAGS "${CMAKE_C_FLAGS}" CACHE STRING "")
@@ -22,15 +20,16 @@ set(LINKER_SCRIPT          "${CMAKE_SOURCE_DIR}/../../ldscripts/risalriscv.ld")
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -T${LINKER_SCRIPT}")
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-Map=sections.map")
 
-project(program_simple C ASM)
-add_executable(program_simple
-    program_simple.c
+project(program_printf C ASM)
+add_executable(program_printf
+    program_printf.c
+    syscalls.c
     startup.s
 )
 
 add_custom_command(
-    TARGET program_simple POST_BUILD
-    COMMAND ${CMAKE_OBJCOPY} -O binary program_simple program_simple.hex
+    TARGET program_printf POST_BUILD
+    COMMAND ${CMAKE_OBJCOPY} -O binary program_printf program_printf.hex
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     COMMENT "Building example programs"
 )

@@ -16,10 +16,10 @@ void gdbserverInit(rv32iHart_t *cpu) {
     }
 
     if (cpu->gdbFields.socketFd > 0) {
-        printf("[rISA]: GDB server started.\n");
+        LOG_I("GDB server started.\n");
     }
     else {
-        printf("[rISA]: Error - Could not start GDB server. Falling back to regular simulator execution.\n");
+        LOG_W("Could not start GDB server. Falling back to regular simulator execution.\n");
         cpu->opts.o_gdbEnabled = 0;
     }
     return;

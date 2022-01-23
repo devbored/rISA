@@ -19,9 +19,11 @@ MEMORY {
     ram (rwx)   : ORIGIN = _RamStart, LENGTH = _RamSize
 }
 
+ENTRY(_risa_start)
+
 SECTIONS {
     .text : {
-        KEEP(*(.risaVector*)) /* reserved rISA vector table */
+        *(.text.startup .text.startup.*)
         *(.text .text*)
         *(.rodata .rodata*)
         _etext = .;
@@ -38,6 +40,7 @@ SECTIONS {
     .data :
     {
         _sdata = .;
+        __global_pointer$ = . + 0x800;
         *(.data .data*)
         _edata = .;
     } > ram AT > rom

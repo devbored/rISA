@@ -3,15 +3,11 @@
 
 int main(int argc, char** argv) {
     // Init simulator
-    int err = 0;
     rv32iHart_t cpu = {0};
-    err = setupSimulator(argc, argv, &cpu);
-    if (err) {
-        return err;
-    }
+    setupSimulator(argc, argv, &cpu);
 
     // Run
-    printf("[rISA]: Running simulator...\n\n");
-    err = executionLoop(&cpu);
-    return err;
+    LOG_I("Running simulator...\n\n");
+    executionLoop(&cpu);
+    return 0;
 }

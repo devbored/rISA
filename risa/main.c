@@ -4,10 +4,11 @@
 int main(int argc, char** argv) {
     // Init simulator
     rv32iHart_t cpu = {0};
-    setupSimulator(argc, argv, &cpu);
+    int err = setupSimulator(argc, argv, &cpu);
+    if (err) { return err; }
 
     // Run
     LOG_I("Running simulator...\n\n");
-    executionLoop(&cpu);
-    return 0;
+    err = executionLoop(&cpu);
+    return err;
 }

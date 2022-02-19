@@ -15,7 +15,7 @@ A simple RISC-V ISA Simulator.
 - CMake (v3.10 or higher)
 - Some compatible CMake Generator (e.g. GNU Make, Visual Studio, Ninja)
 - Some ANSI C compiler (C99 or higher)
-    - A generic ELF/Newlib GCC RISC-V compiler/cross-compiler toolcahin for test programs (Optional)
+    - A generic ELF/Newlib GCC RISC-V compiler/cross-compiler toolcahin for "hello world" test program (Optional)
 - GoogleTest - for building unit tests (Optional)
     - C++11 or newer (Optional)
 
@@ -62,8 +62,8 @@ Memory-Mapped I/O (MMIO), Environment Calls (Env), Interrupts (Int), Initializat
     void risaExitHandler(rv32iHart *cpu);
 ```
 The user can define their own handler functions separately, compile them to a dynamic library, then pass the
-dynamic library as a command-line argument to rISA. This repo comes with example handlers
-(in the `examples/test_risa_handler` folder).
+dynamic library as a command-line argument to rISA. This repo comes with an example handler
+(in the `examples/test_risa_handler` folder) that just indicates/prints that it was called.
 
 The cpu simulation object also contains an opaque user-data pointer:
 ```c

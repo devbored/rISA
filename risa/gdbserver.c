@@ -11,6 +11,7 @@ void gdbserverInit(rv32iHart_t *cpu) {
     }
 
     if (startServer(cpu) < 0) {
+        printf(LOG_LINE_BREAK);
         cleanupSimulator(cpu);
         exit(-1);
     }
@@ -114,6 +115,7 @@ static void minigdbstubUsrProcessBreakpoint(int type, size_t addr, void *usrData
 static void minigdbstubUsrKillSession(void *usrData) {
     rv32iHart_t *cpuHandle = (rv32iHart_t *)usrData;
     cpuHandle->endTime = clock();
+    printf(LOG_LINE_BREAK);
     cleanupSimulator(cpuHandle);
     exit(0);
 }

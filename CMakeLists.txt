@@ -6,12 +6,9 @@ set(GDBSTUB_DIR ${CMAKE_SOURCE_DIR}/external/minigdbstub)
 set(ARGPARSE_DIR ${CMAKE_SOURCE_DIR}/external/miniargparse)
 set(HANDLER_DIR ${CMAKE_SOURCE_DIR}/examples/risa_handler)
 set(TESTS_DIR ${CMAKE_SOURCE_DIR}/tests)
-
-# Example riscv programs
-set(SIMPLE_DIR ${CMAKE_SOURCE_DIR}/examples/program_simple)
-set(SIMPLE_DIR_B ${CMAKE_BINARY_DIR}/examples/program_simple)
-set(PRINTF_DIR ${CMAKE_SOURCE_DIR}/examples/program_printf)
-set(PRINTF_DIR_B ${CMAKE_BINARY_DIR}/examples/program_printf)
+# Example riscv program
+set(SIMPLE_DIR ${CMAKE_SOURCE_DIR}/examples/hello_world)
+set(SIMPLE_DIR_B ${CMAKE_BINARY_DIR}/examples/hello_world)
 
 # CMake generator for RISC-V cross-compiler
 set(CROSS_GEN)
@@ -77,10 +74,5 @@ if(BUILD_PROGS)
     add_custom_target(PROG_SIMPLE ALL
         COMMAND cmake ${SIMPLE_DIR} -B${SIMPLE_DIR_B} -G ${CROSS_GEN} -DRISCV_TC_TRIPLET=${RISCV_TC_TRIPLET}
         COMMAND cmake --build ${SIMPLE_DIR_B}
-    )
-    # Printf test program
-    add_custom_target(PROG_PRINTF ALL
-        COMMAND cmake ${PRINTF_DIR} -B${PRINTF_DIR_B} -G ${CROSS_GEN} -DRISCV_TC_TRIPLET=${RISCV_TC_TRIPLET}
-        COMMAND cmake --build ${PRINTF_DIR_B}
     )
 endif(BUILD_PROGS)

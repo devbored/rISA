@@ -62,7 +62,7 @@ int startServer(rv32iHart_t *cpu){
 
     // Connect to client
     int len = sizeof(client);
-    LOG_I("\nGDB server listening on port %hu.\n", cpu->gdbFields.serverPort);
+    LOG_I("GDB server listening on port [ %hu ] (CTRL-C to exit).\n", cpu->gdbFields.serverPort);
     cpu->gdbFields.connectFd = accept(cpu->gdbFields.socketFd, (struct sockaddr*)&client, (socklen_t*)&len);
     if (cpu->gdbFields.connectFd < 0) {
         LOG_E("Socket server accept for GDB failed.\n");

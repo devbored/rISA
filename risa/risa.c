@@ -50,8 +50,7 @@ void cleanupSimulator(rv32iHart_t *cpu) {
     if (cpu->virtMem        != NULL)    { free(cpu->virtMem);          }
     if (cpu->handlerData    != NULL)    { free(cpu->handlerData);      }
     if (cpu->handlerLib     != NULL)    { CLOSE_LIB(cpu->handlerLib);  }
-    printf("\n");
-    LOG_I("Simulator stopping - time elapsed: (%f seconds).\n",
+    LOG_I("Simulator stopping - time elapsed: [ %f seconds ].\n",
         ((double)(cpu->endTime - cpu->startTime)) / CLOCKS_PER_SEC
     );
 }
@@ -62,12 +61,18 @@ int loadProgram(rv32iHart_t *cpu) {
     if (binFile == NULL) {
         LOG_E("Could not open file [ %s ].\n", cpu->programFile);
         printHelp();
-        cleanupSimulator(cpu);
         return EIO;
+    }
+    // Alloc vmem and load program
+    cpu->virtMem = (u32*)malloc(cpu->virtMemSize);
+    if (cpu->virtMem == NULL) {
+        LOG_E("Could not allocate virtual memory.\n");
+        return ENOMEM;
     }
     for (int i=0; feof(binFile) == 0; ++i) {
         if (i >= (cpu->virtMemSize / sizeof(u32))) {
-            LOG_E("Could not fit <%s> in simulator's virtual memory.\n", cpu->programFile);
+            LOG_E("Could not fit [ %s ] in simulator's virtual memory (use larger value for -m <size>).\n",
+                cpu->programFile);
             fclose(binFile);
             cleanupSimulator(cpu);
             return ENOMEM;
@@ -79,11 +84,9 @@ int loadProgram(rv32iHart_t *cpu) {
 }
 
 int setupSimulator(int argc, char **argv, rv32iHart_t *cpu) {
-    int err = 0;
-    cpu->cleanupSimulator = cleanupSimulator;
-
     // Define opts
-    MINIARGPARSE_OPT(virtMem, "m", "memSize", 1, "Virtual memory/IO size (in bytes) [DEFAULT=16KB].");
+    MINIARGPARSE_OPT(virtMem, "m", "memSize", 1,
+        "Virtual memory/IO size (in bytes - decimal or hex format) [DEFAULT=16KB].");
     MINIARGPARSE_OPT(handlerLib, "l", "handlerLibrary", 1,
         "Shared library file to user-defined handler functions [DEFAULT=stubs].");
     MINIARGPARSE_OPT(help, "h", "help", 0, "Print help and exit.");
@@ -98,14 +101,12 @@ int setupSimulator(int argc, char **argv, rv32iHart_t *cpu) {
     if (unknownOpt > 0) {
         LOG_E("Unknown option [ %s ] used.\n", argv[unknownOpt]);
         printHelp();
-        cleanupSimulator(cpu);
         return EINVAL;
     }
 
     // Exit early if help was defined
     if (help.infoBits.used) {
         printHelp();
-        cleanupSimulator(cpu);
         exit(0);
     }
 
@@ -115,7 +116,6 @@ int setupSimulator(int argc, char **argv, rv32iHart_t *cpu) {
         if (tmp->infoBits.hasErr) {
             LOG_E("%s [ Option: %s ]\n", tmp->errValMsg, argv[tmp->index]);
             printHelp();
-            cleanupSimulator(cpu);
             return EINVAL;
         }
         tmp = tmp->next;
@@ -126,13 +126,16 @@ int setupSimulator(int argc, char **argv, rv32iHart_t *cpu) {
     if (programIndex == 0) {
         LOG_E("No program binary given.\n");
         printHelp();
-        cleanupSimulator(cpu);
         return EINVAL;
     }
     cpu->programFile = argv[programIndex];
 
     // Get value items
     cpu->virtMemSize = (u32)atoi(virtMem.value);
+    if (cpu->virtMemSize == 0) {
+        // If value was passed as a hex string
+        cpu->virtMemSize = strtol(virtMem.value, NULL, 16);
+    }
     cpu->timeoutVal = (long)atol(timeout.value);
     cpu->intPeriodVal = (u32)atoi(interrupt.value);
     cpu->opts.o_timeout = timeout.infoBits.used;
@@ -142,65 +145,56 @@ int setupSimulator(int argc, char **argv, rv32iHart_t *cpu) {
     // Load handler lib and syms (if given)
     cpu->handlerLib = LOAD_LIB(handlerLib.value);
     if (cpu->handlerLib == NULL) {
-        LOG_I(
-            "Could not load dynamic library <%s>.\n"
-            "        Using default default handlers instead.\n", handlerLib.value
-        );
+        LOG_W("Could not load dynamic library [ %s ].\n", handlerLib.value);
     }
     for (int i=0; i<RISA_HANDLER_PROC_COUNT; ++i) {
         cpu->handlerProcs[i] = LOAD_SYM(cpu->handlerLib, g_handlerProcNames[i]);
         if (cpu->handlerProcs[i] == NULL) {
             cpu->handlerProcs[i] = g_defaultHandlerTable[i];
-            LOG_I("Using stub for %s.\n", g_handlerProcNames[i]);
+            if (handlerLib.infoBits.used) {
+                LOG_W("Could not load %s - using default stub instead.\n", g_handlerProcNames[i]);
+            }
         }
     }
     cpu->handlerProcs[RISA_INIT_HANDLER_PROC](cpu);
-    if (cpu->intPeriodVal == 0) {
-        cpu->intPeriodVal = DEFAULT_INT_PERIOD;
-        LOG_I("Using default value '%d' for interrupt period.\n",
-            DEFAULT_INT_PERIOD);
-    }
-    if (cpu->virtMemSize == 0) {
-        cpu->virtMemSize = DEFAULT_VIRT_MEM_SIZE;
-        LOG_I("Using default value '%d' for virtual memory size.\n",
-            DEFAULT_VIRT_MEM_SIZE);
-    }
+    cpu->cleanupSimulator = cleanupSimulator;
 
-    if (cpu->opts.o_gdbEnabled) {
-        gdbserverInit(cpu);
-    }
+    // Interrupt period and virtual memory config
+    if (cpu->intPeriodVal == 0) { cpu->intPeriodVal = DEFAULT_INT_PERIOD;   }
+    if (cpu->virtMemSize == 0)  { cpu->virtMemSize = DEFAULT_VIRT_MEM_SIZE; }
+    LOG_I("Interrupt period set to     [ %d cycles ].\n", cpu->intPeriodVal);
+    LOG_I("Virtual memory size set to  [ %f MB ].\n", (float)cpu->virtMemSize / (float)(1024*1024));
 
-    cpu->virtMem = (u32*)malloc(cpu->virtMemSize);
-    if (cpu->virtMem == NULL) {
-        LOG_E("Could not allocate virtual memory.\n");
-        cleanupSimulator(cpu);
-        return ENOMEM;
-    }
-    err = loadProgram(cpu);
-    if (err) {
-        return err;
-    }
-
-    return 0;
+    // Alloc vmem and load program binary
+    return loadProgram(cpu);
 }
 
 int executionLoop(rv32iHart_t *cpu) {
     cpu->startTime = clock();
+    if (cpu->opts.o_gdbEnabled) {
+        gdbserverInit(cpu);
+    }
     SIGINT_REGISTER(cpu, sigintHandler);
+
+    LOG_I("Running simulator...\n" LOG_LINE_BREAK);
     for (;;) {
-        // Normal exit/cleanup path
+        // Sim timeout value or sigint detected - normal cleanup/exit
         if (g_sigIntDet || (cpu->opts.o_timeout && cpu->cycleCounter == cpu->timeoutVal)) {
             cpu->endTime = clock();
+            printf(LOG_LINE_BREAK);
             cleanupSimulator(cpu);
+            if (cpu->opts.o_timeout) {
+                LOG_I("Timeout value reached - [ %d ]\n", cpu->timeoutVal);
+            }
             return 0;
         }
         // Process GDB commands
         if (cpu->opts.o_gdbEnabled) {
             gdbserverCall(cpu);
         }
-        cpu->cycleCounter++;
 
         // Fetch
+        cpu->cycleCounter++;
         cpu->IF = ACCESS_MEM_W(cpu->virtMem, cpu->pc);
         cpu->instFields.opcode = GET_OPCODE(cpu->IF);
         switch (g_opcodeToFormat[cpu->instFields.opcode]) {
@@ -395,8 +389,9 @@ int executionLoop(rv32iHart_t *cpu) {
                                 break;
                             }
                             default: { // Invalid instruction
-                                LOG_E("(0x%08x) is an invalid instruction.\n", cpu->IF);
                                 cpu->endTime = clock();
+                                printf(LOG_LINE_BREAK);
+                                LOG_E("(0x%08x) is an invalid instruction.\n", cpu->IF);
                                 cleanupSimulator(cpu);
                                 return EILSEQ;
                             }
@@ -536,16 +531,18 @@ int executionLoop(rv32iHart_t *cpu) {
                 break;
             }
             default: { // Invalid instruction
-                LOG_E("(0x%08x) is an invalid instruction.\n", cpu->IF);
                 cpu->endTime = clock();
+                printf(LOG_LINE_BREAK);
+                LOG_E("[ 0x%08x ] is an invalid instruction.\n", cpu->IF);
                 cleanupSimulator(cpu);
                 return EILSEQ;
             }
         }
         // If PC is out-of-bounds
         if (cpu->pc > cpu->virtMemSize) {
-            LOG_E("Program counter is out of range.\n");
             cpu->endTime = clock();
+            printf(LOG_LINE_BREAK);
+            LOG_E("Program counter is out of range.\n");
             cleanupSimulator(cpu);
             return EFAULT;
         }
@@ -554,7 +551,7 @@ int executionLoop(rv32iHart_t *cpu) {
             cpu->handlerProcs[RISA_INT_HANDLER_PROC](cpu);
         }
         cpu->pc += 4;
-        cpu->regFile[0] = 0;
+        cpu->regFile[ZERO] = 0;
     }
 }
 

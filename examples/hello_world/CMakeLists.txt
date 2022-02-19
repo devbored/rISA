@@ -17,19 +17,20 @@ set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}" CACHE STRING "CFLAGS")
 set(CMAKE_ASM_FLAGS "${CMAKE_C_FLAGS}" CACHE STRING "")
 
 set(LINKER_SCRIPT          "${CMAKE_SOURCE_DIR}/../../ldscripts/risalriscv.ld")
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--defsym=RAM_LEN=0x100000")
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -T${LINKER_SCRIPT}")
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-Map=sections.map")
 
-project(program_printf C ASM)
-add_executable(program_printf
-    program_printf.c
+project(hello_world C ASM)
+add_executable(hello_world
+    main.c
     syscalls.c
     startup.s
 )
 
 add_custom_command(
-    TARGET program_printf POST_BUILD
-    COMMAND ${CMAKE_OBJCOPY} -O binary program_printf program_printf.hex
+    TARGET hello_world POST_BUILD
+    COMMAND ${CMAKE_OBJCOPY} -O binary hello_world hello_world.hex
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     COMMENT "Building example programs"
 )

@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <errno.h>
 #include <sys/stat.h>
 #include <stdint.h>
@@ -34,9 +35,40 @@ void _exit(int status) {
 }
 
 ssize_t _write(int file, const void *ptr, size_t len) {
-  return syscall(syscall_write, (long)file, (long)ptr, (long)len);
+  syscall(syscall_write, (long)file, (long)ptr, (long)len);
+  return len; // rISA writes all the chars here, so we just return len (finished)
 }
 
 ssize_t _read(int file, void *ptr, size_t len) {
   return syscall(syscall_read, (long)file, (long)ptr, (long)len);
 }
+
+int _fstat(int file, struct stat *st) {
+  st->st_mode = S_IFCHR;
+  return 0;
+}
+
+void *_sbrk(int incr) {
+  extern char _end;
+  register long sp asm("sp");
+  static char *heap_end;
+  char *prev_heap_end;
+
+  if (heap_end == 0) {
+    heap_end = &_end;
+  }
+  prev_heap_end = heap_end;
+  if (heap_end + incr > sp) {
+    _write(1, "Heap and stack collision\n", 25);
+    _exit(-1);
+  }
+
+  heap_end += incr;
+  return (caddr_t) prev_heap_end;
+}
+
+int _getpid(void)                       { return 1;     }
+int _close(int file)                    { return -1;    }
+int _isatty(int file)                   { return 1;     }
+int _lseek(int file, int ptr, int dir)  { return 0;     }
+void _kill(int pid, int sig)            { return;       }

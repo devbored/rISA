@@ -50,21 +50,23 @@ int _fstat(int file, struct stat *st) {
 
 void *_sbrk(int incr) {
   extern char _end;
+  static char *heap = NULL;
+  char *prev_heap;
+
+  if (heap == NULL) {
+    heap = (char*)&_end;
+  }
+  prev_heap = heap;
+
+  // Collision check
   register long sp asm("sp");
-  static char *heap_end;
-  char *prev_heap_end;
-
-  if (heap_end == 0) {
-    heap_end = &_end;
-  }
-  prev_heap_end = heap_end;
-  if (heap_end + incr > sp) {
-    _write(1, "Heap and stack collision\n", 25);
-    _exit(-1);
+  if ((heap + incr) > sp) {
+    _write(1, "Heap and stack collision!\n", 26);
+    _exit(-ENOMEM);
   }
 
-  heap_end += incr;
-  return (caddr_t) prev_heap_end;
+  heap += incr;
+  return (void*)prev_heap;
 }
 
 int _getpid(void)                       { return 1;     }

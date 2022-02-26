@@ -304,7 +304,7 @@ int executionLoop(rv32iHart_t *cpu) {
                     case JALR:  { // Jump and link register
                         TRACE_I((cpu), "jalr");
                         cpu->regFile[cpu->instFields.rd] = cpu->pc + 4;
-                        cpu->pc = ((cpu->targetAddress) & 0xfffe) - 4;
+                        cpu->pc = ((cpu->targetAddress) & 0xfffffffe) - 4;
                         break;
                     }
                     case LB:    { // Load byte (signed)

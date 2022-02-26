@@ -292,15 +292,15 @@ extern const char *g_regfileAliasLookup[];
 #define LOG_LINE_BREAK "===========================================================\n"
 #define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 #define LOG_I(msg, ...) \
-    printf("[rISA]: INFO  : %12s:%-6d :%20s : " msg, __FILENAME__, __LINE__, __func__, ##__VA_ARGS__)
+    printf("[rISA] INFO  [ %12s:%-6d   ]%20s : " msg, __FILENAME__, __LINE__, __func__, ##__VA_ARGS__)
 #define LOG_W(msg, ...) \
-    printf("[rISA]: WARN  : %12s:%-6d :%20s : " msg, __FILENAME__, __LINE__, __func__, ##__VA_ARGS__)
+    printf("[rISA] WARN  [ %12s:%-6d   ]%20s : " msg, __FILENAME__, __LINE__, __func__, ##__VA_ARGS__)
 #define LOG_E(msg, ...) \
-    printf("[rISA]: ERROR : %12s:%-6d :%20s : " msg, __FILENAME__, __LINE__, __func__, ##__VA_ARGS__)
+    printf("[rISA] ERROR [ %12s:%-6d   ]%20s : " msg, __FILENAME__, __LINE__, __func__, ##__VA_ARGS__)
 
 // Tracing macro with Register type syntax
 #define TRACE_R(cpu, name) do { if (cpu->opts.o_tracePrintEnable) {                     \
-    fprintf(stderr, "[rISA] TRACE : [%12d] cycles :  %8x:  0x%08x    %s %s, %s, %s\n",  \
+    printf("[rISA] TRACE [ %12d ] cycles :  %8x:  0x%08x    %s %s, %s, %s\n",           \
         cpu->cycleCounter,                                                              \
         cpu->pc,                                                                        \
         cpu->virtMem[cpu->pc/4],                                                        \
@@ -312,7 +312,7 @@ extern const char *g_regfileAliasLookup[];
 
 // Tracing macro with Immediate type syntax
 #define TRACE_I(cpu, name) do { if (cpu->opts.o_tracePrintEnable) {                     \
-    fprintf(stderr, "[rISA] TRACE : [%12d] cycles :  %8x:  0x%08x    %s %s, %s, %d\n",  \
+    printf("[rISA] TRACE [ %12d ] cycles :  %8x:  0x%08x    %s %s, %s, %d\n",           \
         cpu->cycleCounter,                                                              \
         cpu->pc,                                                                        \
         cpu->virtMem[cpu->pc/4],                                                        \
@@ -324,7 +324,7 @@ extern const char *g_regfileAliasLookup[];
 
 // Tracing macro with Load type syntax
 #define TRACE_L(cpu, name) do { if (cpu->opts.o_tracePrintEnable) {                     \
-    fprintf(stderr, "[rISA] TRACE : [%12d] cycles :  %8x:  0x%08x    %s %s, %d(%s)\n",  \
+    printf("[rISA] TRACE [ %12d ] cycles :  %8x:  0x%08x    %s %s, %d(%s)\n",           \
         cpu->cycleCounter,                                                              \
         cpu->pc,                                                                        \
         cpu->virtMem[cpu->pc/4],                                                        \
@@ -336,7 +336,7 @@ extern const char *g_regfileAliasLookup[];
 
 // Tracing macro with Store type syntax
 #define TRACE_S(cpu, name) do { if (cpu->opts.o_tracePrintEnable) {                     \
-    fprintf(stderr, "[rISA] TRACE : [%12d] cycles :  %8x:  0x%08x    %s %s, %d(%s)\n",  \
+    printf("[rISA] TRACE [ %12d ] cycles :  %8x:  0x%08x    %s %s, %d(%s)\n",           \
         cpu->cycleCounter,                                                              \
         cpu->pc,                                                                        \
         cpu->virtMem[cpu->pc/4],                                                        \
@@ -348,7 +348,7 @@ extern const char *g_regfileAliasLookup[];
 
 // Tracing macro with Upper type syntax
 #define TRACE_U(cpu, name) do { if (cpu->opts.o_tracePrintEnable) {                     \
-    fprintf(stderr, "[rISA] TRACE : [%12d] cycles :  %8x:  0x%08x    %s %s, 0x%08x\n",  \
+    printf("[rISA] TRACE [ %12d ] cycles :  %8x:  0x%08x    %s %s, 0x%08x\n",           \
         cpu->cycleCounter,                                                              \
         cpu->pc,                                                                        \
         cpu->virtMem[cpu->pc/4],                                                        \
@@ -359,7 +359,7 @@ extern const char *g_regfileAliasLookup[];
 
 // Tracing macro with Jump type syntax
 #define TRACE_J(cpu, name) do { if (cpu->opts.o_tracePrintEnable) {                 \
-    fprintf(stderr, "[rISA] TRACE : [%12d] cycles :  %8x:  0x%08x    %s %s, %d\n",  \
+    printf("[rISA] TRACE [ %12d ] cycles :  %8x:  0x%08x    %s %s, %d\n",           \
         cpu->cycleCounter,                                                          \
         cpu->pc,                                                                    \
         cpu->virtMem[cpu->pc/4],                                                    \
@@ -370,7 +370,7 @@ extern const char *g_regfileAliasLookup[];
 
 // Tracing macro with Branch type syntax
 #define TRACE_B(cpu, name) do { if (cpu->opts.o_tracePrintEnable) {                     \
-    fprintf(stderr, "[rISA] TRACE : [%12d] cycles :  %8x:  0x%08x    %s %s, %s, %d\n",  \
+    printf("[rISA] TRACE [ %12d ] cycles :  %8x:  0x%08x    %s %s, %s, %d\n",           \
         cpu->cycleCounter,                                                              \
         cpu->pc,                                                                        \
         cpu->virtMem[cpu->pc/4],                                                        \
@@ -382,7 +382,7 @@ extern const char *g_regfileAliasLookup[];
 
 // Tracing macro for FENCE
 #define TRACE_FEN(cpu, name) do { if (cpu->opts.o_tracePrintEnable) {                               \
-    fprintf(stderr, "[rISA] TRACE : [%12d] cycles :  %8x:  0x%08x    %s fm:%d, pred:%d, succ:%d\n", \
+    printf("[rISA] TRACE [ %12d ] cycles :  %8x:  0x%08x    %s fm:%d, pred:%d, succ:%d\n",          \
         cpu->cycleCounter,                                                                          \
         cpu->pc,                                                                                    \
         cpu->virtMem[cpu->pc/4],                                                                    \
@@ -394,7 +394,7 @@ extern const char *g_regfileAliasLookup[];
 
 // Tracing macro for Environment type syntax
 #define TRACE_E(cpu, name) do { if (cpu->opts.o_tracePrintEnable) {         \
-    fprintf(stderr, "[rISA] TRACE : [%12d] cycles :  %8x:  0x%08x    %s\n", \
+    printf("[rISA] TRACE [ %12d ] cycles :  %8x:  0x%08x    %s\n",          \
         cpu->cycleCounter,                                                  \
         cpu->pc,                                                            \
         cpu->virtMem[cpu->pc/4],                                            \

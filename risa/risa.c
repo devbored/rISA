@@ -156,7 +156,6 @@ int setupSimulator(int argc, char **argv, rv32iHart_t *cpu) {
             }
         }
     }
-    cpu->handlerProcs[RISA_INIT_HANDLER_PROC](cpu);
     cpu->cleanupSimulator = cleanupSimulator;
 
     // Interrupt period and virtual memory config

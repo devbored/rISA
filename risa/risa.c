@@ -181,10 +181,10 @@ int executionLoop(rv32iHart_t *cpu) {
         if (g_sigIntDet || (cpu->opts.o_timeout && cpu->cycleCounter == cpu->timeoutVal)) {
             cpu->endTime = clock();
             printf(LOG_LINE_BREAK);
-            cleanupSimulator(cpu);
             if (cpu->opts.o_timeout) {
-                LOG_I("Timeout value reached - [ %d ]\n", cpu->timeoutVal);
+                LOG_I("Timeout value reached - [ %d cycles ].\n", cpu->timeoutVal);
             }
+            cleanupSimulator(cpu);
             return 0;
         }
         // Process GDB commands

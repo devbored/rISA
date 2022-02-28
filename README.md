@@ -19,7 +19,7 @@ A simple RISC-V ISA Simulator.
 - GoogleTest - for building unit tests (Optional)
     - C++11 or newer (Optional)
 
-## Build instructions
+## Build instructions 🔨
 This repo uses git submodules - make sure to pull those first:
 
     $ git submodule init && git submodule update
@@ -29,20 +29,35 @@ If you want to only build rISA:
     $ cmake . -Bbuild
     $ cmake --build build
 
-If you want to build rISA with the example RISC-V programs:
+If you want to build rISA with the example RISC-V program:
 
     $ cmake -DBUILD_PROGS=ON . -Bbuild
     $ cmake --build build
 
 There is a `${CROSS_GEN}` CMake config variable that one can specify to provide a build tool type for
-the cross-compile (`Ninja` is the default if not set). Another CMake config variable `${RISCV_TC_TRIPLET}` can be
-specified to define the GCC prefix triple for the toolchain (`riscv64-unknown-elf` is the default if not set).
+the cross-compile (`Unix Makefiles` is the default if not set). Another CMake config variable `${RISCV_TC_TRIPLET}`
+can be specified to define the GCC prefix triple for the toolchain (`riscv64-unknown-elf` is the default if not set).
 
 Example:
 
     $ cmake -DCROSS_GEN="Unix Makefiles" -DRISCV_TC_TRIPLET=riscv-none-embed ...
 
-## Building rISA with unit tests
+## Cross-compile RISC-V program example with Docker 🐳
+Rather than downloading a prebuilt toolchain (which may or may not be built with multilib) and configuring PATH or
+building riscv64-unknown-elf toolchain from scratch, you can use the `devbored/riscv-gnu-toolchain` Docker image
+to take care of this:
+
+    $ docker build -t riscv-gnu-toolchain .
+    $ docker create -it -v $(pwd):/src --name riscv-gnu-toolchain riscv-gnu-toolchain
+    $ docker start riscv-gnu-toolchain
+    $ cmake -DBUILD_PROGS=ON -DDOCKER=ON . -Bbuild
+    $ cmake --build build
+
+To remove `build/examples/hello_world` folder:
+
+    $ docker exec riscv-gnu-toolchain rm -rf /src/build/examples/hello_world
+
+## Building rISA with unit tests 🧪
 [GoogleTest](https://github.com/google/googletest) is used as the unit testing framework. So you will
 need to have GoogleTest installed on your system for CMake to pick-up as a package.
 ```

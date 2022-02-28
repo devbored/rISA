@@ -65,14 +65,21 @@ add_subdirectory(${CMAKE_SOURCE_DIR}/examples/risa_handler)
 # (Needs to run as separate CMake command due to this)
 if(BUILD_PROGS)
     if(NOT DEFINED CROSS_GEN)
-        set(CROSS_GEN "Ninja")
+        set(CROSS_GEN "Unix Makefiles")
     endif()
     if(NOT DEFINED RISCV_TC_TRIPLET)
         set(RISCV_TC_TRIPLET "riscv64-unknown-elf")
     endif()
     # Simple test program
-    add_custom_target(PROG_SIMPLE ALL
-        COMMAND cmake ${SIMPLE_DIR} -B${SIMPLE_DIR_B} -G ${CROSS_GEN} -DRISCV_TC_TRIPLET=${RISCV_TC_TRIPLET}
-        COMMAND cmake --build ${SIMPLE_DIR_B}
-    )
+    if (DOCKER)
+        add_custom_target(PROG_SIMPLE ALL
+            COMMAND docker exec -w /src riscv-gnu-toolchain cmake examples/hello_world -Bbuild/examples/hello_world -G ${CROSS_GEN} -DRISCV_TC_TRIPLET=${RISCV_TC_TRIPLET}
+            COMMAND docker exec -w /src riscv-gnu-toolchain cmake --build build/examples/hello_world
+        )
+    else()
+        add_custom_target(PROG_SIMPLE ALL
+            COMMAND cmake ${SIMPLE_DIR} -B${SIMPLE_DIR_B} -G ${CROSS_GEN} -DRISCV_TC_TRIPLET=${RISCV_TC_TRIPLET}
+            COMMAND cmake --build ${SIMPLE_DIR_B}
+        )
+    endif(DOCKER)
 endif(BUILD_PROGS)

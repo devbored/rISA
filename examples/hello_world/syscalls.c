@@ -61,8 +61,7 @@ void *_sbrk(int incr) {
   // Collision check
   register long sp asm("sp");
   if ((heap + incr) > sp) {
-    _write(1, "Heap and stack collision!\n", 26);
-    _exit(-ENOMEM);
+    return NULL;
   }
 
   heap += incr;

@@ -47,15 +47,23 @@ Rather than downloading a prebuilt toolchain (which may or may not be built with
 building riscv64-unknown-elf toolchain from scratch, you can use the `devbored/riscv-gnu-toolchain` Docker image
 to take care of this:
 
+First time setup:
+
     $ docker build -t riscv-gnu-toolchain .
-    $ docker create -it -v $(pwd):/src --name riscv-gnu-toolchain riscv-gnu-toolchain
-    $ docker start riscv-gnu-toolchain
+    $ docker create -it -v $(pwd):/src --name risa-toolchain riscv-gnu-toolchain
+
+Then start/stop container whenever needed:
+
+    $ docker start risa-toolchain
+
+Then to build with Docker, define `-DDOCKER=ON` during CMake config (then build):
+
     $ cmake -DBUILD_PROGS=ON -DDOCKER=ON . -Bbuild
     $ cmake --build build
 
 To remove `build/examples/hello_world` folder:
 
-    $ docker exec riscv-gnu-toolchain rm -rf /src/build/examples/hello_world
+    $ docker exec risa-toolchain rm -rf /src/build/examples/hello_world
 
 ## Building rISA with unit tests 🧪
 [GoogleTest](https://github.com/google/googletest) is used as the unit testing framework. So you will

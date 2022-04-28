@@ -1,33 +1,32 @@
 cmake_minimum_required(VERSION 3.10)
-
 project(risa_tests)
 
-# External dependencies
-find_package(GTest CONFIG REQUIRED)
-find_package(Threads REQUIRED)
+# GoogleTest
+set(CMAKE_CXX_STANDARD 11)
+find_package(GTest REQUIRED)
 
-file(GLOB SRCS *.cpp)
-add_executable(risa_tests ${SRCS} ${RISA_SRCS})
+add_executable(risa_tests)
+target_sources(risa_tests PRIVATE
+    ${RISA_SRCS}
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_execution.cpp
+)
 target_include_directories(risa_tests PRIVATE
     ${RISA_DIR}
     ${TESTS_DIR}
     ${ARGPARSE_DIR}
-    ${CMAKE_SOURCE_DIR}
-    ${CMAKE_SOURCE_DIR}/external/minigdbstub
+    ${GDBSTUB_DIR}
 )
-set_target_properties(risa_tests PROPERTIES
-    CXX_STANDARD 11
-)
-if (WIN32)
-    target_compile_options(risa_tests PRIVATE "/W4")
+if (MSVC)
+    target_compile_options(risa_tests PRIVATE "/Wall")
     target_link_libraries(risa_tests PRIVATE wsock32 ws2_32)
 else()
-    target_compile_options(risa_tests PRIVATE -Wall)
-    target_compile_options(risa_tests PRIVATE -pedantic)
-    target_compile_options(risa_tests PRIVATE -Wno-unused-function)
+    target_compile_options(risa_tests PRIVATE "-Wall")
+    target_compile_options(risa_tests PRIVATE "-pedantic")
+    # Certain tests dont use all of the stub's functions - silence this
+    target_compile_options(risa_tests PRIVATE "-Wno-unused-function")
 endif()
-target_link_libraries(risa_tests PRIVATE
-    GTest::gtest
-    GTest::gtest_main
+target_link_libraries(risa_tests
+    GTest::GTest
+    GTest::Main
     ${CMAKE_DL_LIBS}
 )

@@ -38,6 +38,11 @@ int startServer(rv32iHart_t *cpu){
         LOG_E("Socket creation for GDB failed.\n");
         return -1;
     }
+    int enable = 1;
+    if (setsockopt(cpu->gdbFields.socketFd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int)) < 0) {
+        LOG_E("setsockopt failed.\n");
+        return -1;
+    }
 
 #ifdef _WIN32
     localhostaddr.S_un.S_addr = htonl(INADDR_ANY);

@@ -1,6 +1,25 @@
 # rISA
 A simple RISC-V ISA Simulator.
 
+```
+ ________  ___  ________  ________
+|\   __  \|\  \|\   ____\|\   __  \
+\ \  \|\  \ \  \ \  \___|\ \  \|\  \
+ \ \   _  _\ \  \ \_____  \ \   __  \
+  \ \  \\  \\ \  \|____|\  \ \  \ \  \
+   \ \__\\ _\\ \__\____\_\  \ \__\ \__\
+    \|__|\|__|\|__|\_________\|__|\|__|
+                  \|_________|
+
+[rISA] INFO  [      risa.c:164   ]       setupSimulator : Interrupt period set to: 500 cycles.
+[rISA] INFO  [      risa.c:165   ]       setupSimulator : Virtual memory size set to: 1.000000 MB.
+[rISA] INFO  [      risa.c:178   ]        executionLoop : Running simulator...
+============================================================================================
+Hello World in rISA!
+============================================================================================
+[rISA] INFO  [      risa.c:55    ]     cleanupSimulator : Simulator stopping - time elapsed: 0.000259 seconds.
+```
+
 ## Project features
 - Functional simulation of RV32I
 - Cross platform (Windows, macOS, Linux)

@@ -35,8 +35,8 @@ const char *g_handlerProcNames[RISA_HANDLER_PROC_COUNT] = {
 
 void printHelp(void) {
     printf("\n"
-        "Usage: risa [OPTIONS] <program_binary>\n"
-        "Example: risa -m 1024 my_riscv_program.hex"
+        "[Usage   ]: risa [OPTIONS] <program_binary>\n"
+        "[Example ]: risa -m 1024 my_riscv_program.hex"
         "\n\n"
         "OPTIONS:\n"
     );
@@ -50,7 +50,7 @@ void cleanupSimulator(rv32iHart_t *cpu) {
     if (cpu->virtMem        != NULL)    { free(cpu->virtMem);          }
     if (cpu->handlerData    != NULL)    { free(cpu->handlerData);      }
     if (cpu->handlerLib     != NULL)    { CLOSE_LIB(cpu->handlerLib);  }
-    LOG_I("Simulator stopping - time elapsed: [ %f seconds ].\n",
+    LOG_I("Simulation stopping, time elapsed: %f seconds.\n\n",
         ((double)(cpu->endTime - cpu->startTime)) / CLOCKS_PER_SEC
     );
 }
@@ -144,7 +144,7 @@ int setupSimulator(int argc, char **argv, rv32iHart_t *cpu) {
 
     // Load handler lib and syms (if given)
     cpu->handlerLib = LOAD_LIB(handlerLib.value);
-    if (cpu->handlerLib == NULL) {
+    if (handlerLib.infoBits.used && cpu->handlerLib == NULL) {
         LOG_W("Could not load dynamic library [ %s ].\n", handlerLib.value);
     }
     for (int i=0; i<RISA_HANDLER_PROC_COUNT; ++i) {
@@ -161,8 +161,8 @@ int setupSimulator(int argc, char **argv, rv32iHart_t *cpu) {
     // Interrupt period and virtual memory config
     if (cpu->intPeriodVal == 0) { cpu->intPeriodVal = DEFAULT_INT_PERIOD;   }
     if (cpu->virtMemSize == 0)  { cpu->virtMemSize = DEFAULT_VIRT_MEM_SIZE; }
-    LOG_I("Interrupt period set to     [ %d cycles ].\n", cpu->intPeriodVal);
-    LOG_I("Virtual memory size set to  [ %f MB ].\n", (float)cpu->virtMemSize / (float)(1024*1024));
+    LOG_I("Interrupt period set to: %d cycles.\n", cpu->intPeriodVal);
+    LOG_I("Virtual memory size set to: %f MB.\n", (float)cpu->virtMemSize / (float)(1024*1024));
 
     // Alloc vmem and load program binary
     return loadProgram(cpu);

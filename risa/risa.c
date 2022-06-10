@@ -90,7 +90,7 @@ int setupSimulator(int argc, char **argv, rv32iHart_t *cpu) {
     MINIARGPARSE_OPT(handlerLib, "l", "handlerLibrary", 1,
         "Shared library file to user-defined handler functions [DEFAULT=stubs].");
     MINIARGPARSE_OPT(help, "h", "help", 0, "Print help and exit.");
-    MINIARGPARSE_OPT(tracing, "", "tracing", 0, "Enable trace printing to stderr.");
+    MINIARGPARSE_OPT(tracing, "", "tracing", 0, "Enable trace printing to stdout.");
     MINIARGPARSE_OPT(timeout, "t", "timeout", 1, "Simulator cycle timeout value [DEFAULT=INT32_MAX].");
     MINIARGPARSE_OPT(interrupt, "i", "interruptPeriod", 1,
         "Simulator interrupt-check timeout value [DEFAULT=500].");

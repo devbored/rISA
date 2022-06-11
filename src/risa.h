@@ -292,11 +292,11 @@ extern const char *g_regfileAliasLookup[];
 #define LOG_LINE_BREAK "============================================================================================\n"
 #define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 #define LOG_I(msg, ...) \
-    printf("[rISA] INFO:[  %12s:%-6d ]:[ %20s ]: " msg, __FILENAME__, __LINE__, __func__, ##__VA_ARGS__)
+    printf("[rISA]:[INFO ]:[%12s]:[%6d]:[%20s] - " msg, __FILENAME__, __LINE__, __func__, ##__VA_ARGS__)
 #define LOG_W(msg, ...) \
-    printf("[rISA] WARN:[  %12s:%-6d ]:[ %20s ]: " msg, __FILENAME__, __LINE__, __func__, ##__VA_ARGS__)
+    printf("[rISA]:[WARN ]:[%12s]:[%6d]:[%20s] - " msg, __FILENAME__, __LINE__, __func__, ##__VA_ARGS__)
 #define LOG_E(msg, ...) \
-    printf("[rISA] ERROR:[ %12s:%-6d ]:[ %20s ]: " msg, __FILENAME__, __LINE__, __func__, ##__VA_ARGS__)
+    printf("[rISA]:[ERROR]:[%12s]:[%6d]:[%20s] - " msg, __FILENAME__, __LINE__, __func__, ##__VA_ARGS__)
 
 // Tracing macro with Register type syntax
 #define TRACE_R(cpu, name) do { if (cpu->opts.o_tracePrintEnable) {                     \

@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.10)
 
 project(risa)
-set(RISA_DIR ${CMAKE_SOURCE_DIR}/risa)
+set(RISA_DIR ${CMAKE_SOURCE_DIR}/src)
 set(GDBSTUB_DIR ${CMAKE_SOURCE_DIR}/external/minigdbstub)
 set(ARGPARSE_DIR ${CMAKE_SOURCE_DIR}/external/miniargparse)
 set(HANDLER_DIR ${CMAKE_SOURCE_DIR}/examples/risa_handler)

@@ -35,8 +35,8 @@ const char *g_handlerProcNames[RISA_HANDLER_PROC_COUNT] = {
 
 void printHelp(void) {
     printf("\n"
-        "[Usage   ]: risa [OPTIONS] <program_binary>\n"
-        "[Example ]: risa -m 1024 my_riscv_program.hex"
+        "[Usage  ]: risa [OPTIONS] <program_binary>\n"
+        "[Example]: risa -m 1024 my_riscv_program.hex"
         "\n\n"
         "OPTIONS:\n"
     );
@@ -59,7 +59,7 @@ int loadProgram(rv32iHart_t *cpu) {
     FILE* binFile;
     OPEN_FILE(binFile, cpu->programFile, "rb");
     if (binFile == NULL) {
-        LOG_E("Could not open file [ %s ].\n", cpu->programFile);
+        LOG_E("Could not open file ( %s ).\n", cpu->programFile);
         printHelp();
         return EIO;
     }
@@ -71,7 +71,7 @@ int loadProgram(rv32iHart_t *cpu) {
     }
     for (int i=0; feof(binFile) == 0; ++i) {
         if (i >= (cpu->virtMemSize / sizeof(u32))) {
-            LOG_E("Could not fit [ %s ] in simulator's virtual memory (use larger value for -m <size>).\n",
+            LOG_E("Could not fit ( %s ) in simulator's virtual memory (use larger value for -m <size>).\n",
                 cpu->programFile);
             fclose(binFile);
             cleanupSimulator(cpu);
@@ -99,7 +99,7 @@ int setupSimulator(int argc, char **argv, rv32iHart_t *cpu) {
     // Parse the args
     int unknownOpt = miniargparseParse(argc, argv);
     if (unknownOpt > 0) {
-        LOG_E("Unknown option [ %s ] used.\n", argv[unknownOpt]);
+        LOG_E("Unknown option ( %s ) used.\n", argv[unknownOpt]);
         printHelp();
         return EINVAL;
     }
@@ -114,7 +114,7 @@ int setupSimulator(int argc, char **argv, rv32iHart_t *cpu) {
     miniargparseOpt *tmp = miniargparseOptlistController(NULL);
     while (tmp != NULL) {
         if (tmp->infoBits.hasErr) {
-            LOG_E("%s [ Option: %s ]\n", tmp->errValMsg, argv[tmp->index]);
+            LOG_E("%s ( Option: %s )\n", tmp->errValMsg, argv[tmp->index]);
             printHelp();
             return EINVAL;
         }
@@ -145,7 +145,7 @@ int setupSimulator(int argc, char **argv, rv32iHart_t *cpu) {
     // Load handler lib and syms (if given)
     cpu->handlerLib = LOAD_LIB(handlerLib.value);
     if (handlerLib.infoBits.used && cpu->handlerLib == NULL) {
-        LOG_W("Could not load dynamic library [ %s ].\n", handlerLib.value);
+        LOG_W("Could not load dynamic library ( %s ).\n", handlerLib.value);
     }
     for (int i=0; i<RISA_HANDLER_PROC_COUNT; ++i) {
         cpu->handlerProcs[i] = LOAD_SYM(cpu->handlerLib, g_handlerProcNames[i]);
@@ -182,7 +182,7 @@ int executionLoop(rv32iHart_t *cpu) {
             cpu->endTime = clock();
             printf(LOG_LINE_BREAK);
             if (cpu->opts.o_timeout) {
-                LOG_I("Timeout value reached - [ %d cycles ].\n", cpu->timeoutVal);
+                LOG_I("Timeout value reached - ( %d cycles ).\n", cpu->timeoutVal);
             }
             cleanupSimulator(cpu);
             return 0;
@@ -532,7 +532,7 @@ int executionLoop(rv32iHart_t *cpu) {
             default: { // Invalid instruction
                 cpu->endTime = clock();
                 printf(LOG_LINE_BREAK);
-                LOG_E("[ 0x%08x ] is an invalid instruction.\n", cpu->IF);
+                LOG_E("( 0x%08x ) is an invalid instruction.\n", cpu->IF);
                 cleanupSimulator(cpu);
                 return EILSEQ;
             }

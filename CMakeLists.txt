@@ -30,12 +30,10 @@ set(RISA_SRCS
 )
 
 add_executable(risa ${RISA_DIR}/main.c ${RISA_SRCS})
-target_link_libraries(
-    risa
-    ${CMAKE_DL_LIBS}
-)
-if (WIN32)
+if (WIN32 OR MINGW)
     target_link_libraries(risa PRIVATE wsock32 ws2_32)
+else ()
+    target_link_libraries(risa ${CMAKE_DL_LIBS})
 endif()
 
 target_include_directories(

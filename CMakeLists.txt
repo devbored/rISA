@@ -71,9 +71,13 @@ if(BUILD_PROGS)
     # Simple test program
     if (DOCKER)
         add_custom_target(PROG_SIMPLE ALL
-            COMMAND docker exec -w /src risa-toolchain cmake examples/hello_world
-                -Bbuild/examples/hello_world -G ${CROSS_GEN} -DRISCV_TC_TRIPLET=${RISCV_TC_TRIPLET}
-            COMMAND docker exec -w /src risa-toolchain cmake --build build/examples/hello_world
+            COMMAND docker run -it -v ${CMAKE_CURRENT_SOURCE_DIR}:/src -w /src riscv-gnu-toolchain
+                cmake examples/hello_world
+                    -Bbuild/examples/hello_world
+                    -G${CROSS_GEN}
+                    -DRISCV_TC_TRIPLET=${RISCV_TC_TRIPLET}
+            COMMAND docker run -it -v ${CMAKE_CURRENT_SOURCE_DIR}:/src -w /src riscv-gnu-toolchain
+                cmake --build build/examples/hello_world
         )
     else()
         add_custom_target(PROG_SIMPLE ALL

@@ -69,11 +69,6 @@ to take care of this:
 First time setup:
 
     $ docker build --build-arg UID=$(id -u) --build-arg GID=$(id -g) -t riscv-gnu-toolchain .
-    $ docker create -it -v $(pwd):/src --name risa-toolchain riscv-gnu-toolchain
-
-Then start/stop container whenever needed:
-
-    $ docker start risa-toolchain
 
 Then to build with Docker, define `-DDOCKER=ON` during CMake config (then build):
 

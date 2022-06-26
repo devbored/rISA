@@ -1,7 +1,7 @@
 FROM devbored/riscv-gnu-toolchain:2022.02.25
 
-ARG UID
-ARG GID
+ARG UID=1000
+ARG GID=1000
 
 RUN apk add build-base cmake
 

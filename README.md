@@ -68,7 +68,7 @@ to take care of this:
 
 First time setup:
 
-    $ docker build --build-arg UID=$(id -u) --build-arg GID=$(id -g) -t riscv-gnu-toolchain .
+    $ docker build -t riscv-gnu-toolchain .
 
 Then to build with Docker, define `-DDOCKER=ON` during CMake config (then build):
 
